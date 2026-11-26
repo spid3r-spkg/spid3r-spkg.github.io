@@ -1,0 +1,77 @@
+name: Verify Package Registry
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject committed private signing keys
+        run: |
+          if find . -maxdepth 3 -name "*.key" | grep -q .; then
+            echo "ERROR: Private signing key files (*.key / registry.key) must never be committed!"
+            exit 1
+          fi
+      - name: Validate package directories, sha256.txt, index.txt, and catalog.txt
+        shell: python3 {0}
+        run: |
+          import hashlib, pathlib, sys, tarfile
+
+          root = pathlib.Path(".")
+          catalog_path = root / "catalog.txt"
+          if not catalog_path.is_file():
+              sys.exit("catalog.txt is missing")
+
+          skip = {".git", ".github"}
+          pkg_dirs = sorted(
+              d for d in root.iterdir()
+              if d.is_dir() and d.name not in skip and not d.name.startswith(".")
+          )
+          if not pkg_dirs:
+              sys.exit("Registry has no package directories")
+
+          def tree_hash(src_dir: pathlib.Path) -> str:
+              files = sorted(p for p in src_dir.rglob("*") if p.is_file())
+              h = hashlib.sha256()
+              for f in files:
+                  rel = f.relative_to(src_dir).as_posix().encode("utf-8")
+                  h.update(rel)
+                  h.update(b"\x00")
+                  h.update(f.read_bytes())
+                  h.update(b"\x00")
+              return h.hexdigest()
+
+          catalog_names = set()
+          for line in catalog_path.read_text(encoding="utf-8").splitlines():
+              s = line.strip()
+              if s and not s.startswith("#"):
+                  catalog_names.add(s.split("\t")[0].strip())
+
+          for pkg in pkg_dirs:
+              idx = pkg / "index.txt"
+              if not idx.is_file():
+                  sys.exit(f"{pkg}: missing index.txt")
+              versions = [v.strip() for v in idx.read_text(encoding="utf-8").splitlines() if v.strip() and not v.strip().startswith("#")]
+              if not versions:
+                  sys.exit(f"{pkg}/index.txt has no versions")
+              if pkg.name not in catalog_names:
+                  sys.exit(f"{pkg.name} missing from catalog.txt")
+              for ver in versions:
+                  vdir = pkg / ver
+                  for req in ("spider.toml", "sha256.txt", "package.tar"):
+                      if not (vdir / req).is_file():
+                          sys.exit(f"{vdir}: missing {req}")
+                  expected = (vdir / "sha256.txt").read_text(encoding="utf-8").strip()
+                  actual = tree_hash(vdir / "src")
+                  if expected != actual:
+                      sys.exit(f"{vdir}: sha256.txt mismatch ({expected} != {actual})")
+                  with tarfile.open(vdir / "package.tar", "r") as tf:
+                      for member in tf.getmembers():
+                          if member.islnk() or member.issym() or ".." in member.name or member.name.startswith("/"):
+                              sys.exit(f"{vdir}/package.tar: unsafe member {member.name}")
+          print(f"Verified {len(pkg_dirs)} package(s) successfully.")

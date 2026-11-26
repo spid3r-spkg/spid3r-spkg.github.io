@@ -1,0 +1,6 @@
+# Private signing key generated if SPID3R_SIGN_KEY is unset — NEVER commit!
+registry.key
+*.key
+
+.DS_Store
+Thumbs.db

@@ -1,0 +1,3 @@
+# Spid3r Package Registry Catalog
+# name	latest	versions	description
+hello	0.1.0	0.1.0	Starter greeting package for Spid3r

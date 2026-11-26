@@ -1,0 +1,249 @@
+// validate.matrix — Strict input validation and sanitization for nettools.
+
+public fn clamp_int(v: int, lo: int, hi: int) -> int {
+    if v < lo {
+        return lo;
+    }
+    if v > hi {
+        return hi;
+    }
+    return v;
+}
+
+fn is_ascii_digit(ch: string) -> bool {
+    let c = ord(ch);
+    return c >= 48 and c <= 57;
+}
+
+fn is_ascii_alpha(ch: string) -> bool {
+    let c = ord(ch);
+    return (c >= 65 and c <= 90) or (c >= 97 and c <= 122);
+}
+
+fn is_ascii_alnum(ch: string) -> bool {
+    return is_ascii_digit(ch) or is_ascii_alpha(ch);
+}
+
+fn is_hex_char(ch: string) -> bool {
+    let c = ord(ch);
+    return is_ascii_digit(ch) or (c >= 65 and c <= 70) or (c >= 97 and c <= 102);
+}
+
+public fn has_shell_meta(s: string) -> bool {
+    let n = len(s);
+    let i = 0;
+    while i < n {
+        let ch = s[i];
+        let c = ord(ch);
+        if c < 33 or c > 126 {
+            return true;
+        }
+        if ch == ";" or ch == "|" or ch == "&" or ch == "$" or ch == "`" or ch == "'" or ch == "\"" or ch == "<" or ch == ">" or ch == "(" or ch == ")" or ch == "{" or ch == "}" or ch == "\\" or ch == "*" or ch == "?" or ch == "!" {
+            return true;
+        }
+        i += 1;
+    }
+    return false;
+}
+
+public fn is_valid_ipv4(s: string) -> bool {
+    let t = s.trim();
+    if len(t) < 7 or len(t) > 15 {
+        return false;
+    }
+    let parts = t.split(".");
+    if len(parts) != 4 {
+        return false;
+    }
+    for part in parts {
+        if len(part) == 0 or len(part) > 3 {
+            return false;
+        }
+        if len(part) > 1 and part[0] == "0" {
+            return false;
+        }
+        let j = 0;
+        while j < len(part) {
+            if not is_ascii_digit(part[j]) {
+                return false;
+            }
+            j += 1;
+        }
+        let val = 0;
+        try {
+            val = int(part);
+        } catch (_e) {
+            return false;
+        }
+        if val < 0 or val > 255 {
+            return false;
+        }
+    }
+    return true;
+}
+
+public fn is_valid_ipv6(s: string) -> bool {
+    let t = s.trim();
+    if len(t) < 2 or len(t) > 45 {
+        return false;
+    }
+    if not t.contains(":") or has_shell_meta(t) {
+        return false;
+    }
+    let i = 0;
+    while i < len(t) {
+        let ch = t[i];
+        if not is_hex_char(ch) and ch != ":" and ch != "." {
+            return false;
+        }
+        i += 1;
+    }
+    let dbl = t.split("::");
+    if len(dbl) > 2 {
+        return false;
+    }
+    let groups = t.split(":");
+    if len(groups) > 8 {
+        return false;
+    }
+    for g in groups {
+        if len(g) > 4 and not g.contains(".") {
+            return false;
+        }
+    }
+    return true;
+}
+
+public fn is_valid_cidr(s: string) -> bool {
+    let t = s.trim();
+    let parts = t.split("/");
+    if len(parts) != 2 {
+        return false;
+    }
+    if not is_valid_ipv4(parts[0]) {
+        return false;
+    }
+    let pstr = parts[1];
+    if len(pstr) == 0 or len(pstr) > 2 {
+        return false;
+    }
+    let i = 0;
+    while i < len(pstr) {
+        if not is_ascii_digit(pstr[i]) {
+            return false;
+        }
+        i += 1;
+    }
+    let pfx = -1;
+    try {
+        pfx = int(pstr);
+    } catch (_e) {
+        return false;
+    }
+    return pfx >= 0 and pfx <= 32;
+}
+
+public fn is_valid_host(s: string) -> bool {
+    let t = s.trim();
+    if len(t) == 0 or len(t) > 253 {
+        return false;
+    }
+    if t.starts_with("-") or has_shell_meta(t) {
+        return false;
+    }
+    if is_valid_ipv4(t) or is_valid_ipv6(t) {
+        return true;
+    }
+    if t.ends_with(".") {
+        t = t.slice(0, len(t) - 1);
+    }
+    if len(t) == 0 {
+        return false;
+    }
+    let labels = t.split(".");
+    for lbl in labels {
+        if len(lbl) == 0 or len(lbl) > 63 {
+            return false;
+        }
+        if lbl.starts_with("-") or lbl.ends_with("-") {
+            return false;
+        }
+        let i = 0;
+        while i < len(lbl) {
+            let ch = lbl[i];
+            if not is_ascii_alnum(ch) and ch != "-" and ch != "_" {
+                return false;
+            }
+            i += 1;
+        }
+    }
+    return true;
+}
+
+public fn is_valid_port(p: int) -> bool {
+    return p >= 1 and p <= 65535;
+}
+
+public fn is_valid_http_url(u: string) -> bool {
+    let t = u.trim();
+    if len(t) < 10 or len(t) > 2048 {
+        return false;
+    }
+    let low = t.lower();
+    if not low.starts_with("http://") and not low.starts_with("https://") {
+        return false;
+    }
+    let i = 0;
+    while i < len(t) {
+        let c = ord(t[i]);
+        if c <= 32 or c == 127 {
+            return false;
+        }
+        i += 1;
+    }
+    let after_scheme = t.slice(t.index_of("://") + 3);
+    let host_port = after_scheme.split("/")[0].split("?")[0].split("#")[0];
+    if len(host_port) == 0 {
+        return false;
+    }
+    let host_only = host_port;
+    if host_port.starts_with("[") {
+        let close_idx = host_port.index_of("]");
+        if close_idx < 0 {
+            return false;
+        }
+        host_only = host_port.slice(1, close_idx);
+    } elif host_port.contains(":") {
+        host_only = host_port.split(":")[0];
+    }
+    return is_valid_host(host_only);
+}
+
+public fn is_valid_dns_type(t: string) -> bool {
+    let up = t.trim().upper();
+    return up == "A" or up == "AAAA" or up == "CNAME" or up == "MX" or up == "TXT" or up == "NS" or up == "SOA" or up == "PTR" or up == "SRV" or up == "CAA" or up == "ANY";
+}
+
+public fn is_valid_asn(s: string) -> bool {
+    let t = s.trim().upper();
+    if t.starts_with("AS") {
+        t = t.slice(2);
+    }
+    if len(t) == 0 or len(t) > 10 {
+        return false;
+    }
+    let i = 0;
+    while i < len(t) {
+        if not is_ascii_digit(t[i]) {
+            return false;
+        }
+        i += 1;
+    }
+    let n = 0;
+    try {
+        n = int(t);
+    } catch (_e) {
+        return false;
+    }
+    return n >= 1 and n <= 4294967295;
+}

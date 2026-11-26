@@ -1,0 +1,13 @@
+[package]
+name = "nettools"
+version = "0.1.2"
+entry = "src/lib.matrix"
+description = "Cross-platform network diagnostics toolkit & CLI: Ping, Traceroute, TCP Ping, DNS/DoH, Subnet/CIDR math, HTTP/TLS checks, WHOIS/RDAP, and local companion server"
+license = "MIT"
+spid3r = ">=1.0.0"
+categories = ["net", "cli", "diagnostics"]
+targets = ["windows", "linux", "macos"]
+
+[bin]
+nettools = "src/cli.matrix"
+nettools-server = "src/server.matrix"

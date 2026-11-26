@@ -11,23 +11,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Reject committed private signing keys
         run: |
-          if find . -maxdepth 3 -name "*.key" | grep -q .; then
+          if find . -maxdepth 4 -name "*.key" | grep -q .; then
             echo "ERROR: Private signing key files (*.key / registry.key) must never be committed!"
             exit 1
           fi
-      - name: Validate package directories, sha256.txt, index.txt, and catalog.txt
+      - name: Enforce release immutability on Pull Requests
+        if: github.event_name == 'pull_request'
+        shell: python3 {0}
+        run: |
+          import subprocess, sys
+
+          base = "${{ github.event.pull_request.base.sha }}"
+          out = subprocess.check_output(["git", "diff", "--name-status", base, "HEAD"], text=True)
+          for line in out.splitlines():
+              if not line.strip():
+                  continue
+              parts = line.split("\t")
+              status, path = parts[0], parts[1]
+              if path in ("registry.pub", "registry.toml") and status != "A":
+                  sys.exit(f"PR cannot modify or delete {path} ({status})")
+              segs = path.split("/")
+              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] != "assets":
+                  sys.exit(f"Release immutability violation: PR tried to {status} existing published path {path}")
+          print("PR release immutability verified.")
+      - name: Validate packages, hashes, and tar safety
         shell: python3 {0}
         run: |
           import hashlib, pathlib, sys, tarfile
 
+          RESERVED = {"CON", "PRN", "AUX", "NUL"} | {f"COM{i}" for i in range(1, 10)} | {f"LPT{i}" for i in range(1, 10)}
           root = pathlib.Path(".")
           catalog_path = root / "catalog.txt"
           if not catalog_path.is_file():
               sys.exit("catalog.txt is missing")
 
-          skip = {".git", ".github"}
+          skip = {".git", ".github", "assets"}
           pkg_dirs = sorted(
               d for d in root.iterdir()
               if d.is_dir() and d.name not in skip and not d.name.startswith(".")
@@ -70,8 +92,20 @@ jobs:
                   actual = tree_hash(vdir / "src")
                   if expected != actual:
                       sys.exit(f"{vdir}: sha256.txt mismatch ({expected} != {actual})")
+                  seen_lower = set()
                   with tarfile.open(vdir / "package.tar", "r") as tf:
                       for member in tf.getmembers():
-                          if member.islnk() or member.issym() or ".." in member.name or member.name.startswith("/"):
+                          if member.islnk() or member.issym() or ":" in member.name or "\\" in member.name or member.name.startswith("/"):
                               sys.exit(f"{vdir}/package.tar: unsafe member {member.name}")
+                          parts = pathlib.PurePosixPath(member.name).parts
+                          if ".." in parts:
+                              sys.exit(f"{vdir}/package.tar: traversal path {member.name}")
+                          for part in parts:
+                              stem = part.split(".")[0].upper()
+                              if stem in RESERVED or part.endswith(".") or part.endswith(" "):
+                                  sys.exit(f"{vdir}/package.tar: invalid/reserved name {member.name}")
+                          low = member.name.lower()
+                          if low in seen_lower:
+                              sys.exit(f"{vdir}/package.tar: case-colliding member {member.name}")
+                          seen_lower.add(low)
           print(f"Verified {len(pkg_dirs)} package(s) successfully.")

@@ -1,0 +1,316 @@
+// commands.matrix — Safe cross-platform OS diagnostic command specifications & execution.
+// Never invokes a shell interpreter; every argument is validated and passed directly via exec_capture.
+
+import "validate" as val;
+
+public fn detect_os() -> string {
+    let win_env = env("OS");
+    if win_env.is_some() {
+        let w = string(win_env.unwrap()).lower();
+        if w.contains("windows") {
+            return "windows";
+        }
+    }
+    let u = exec_capture("uname", list("-s"), null);
+    if u.is_ok() {
+        let res = u.unwrap();
+        let out = string(res["stdout"]).trim().lower();
+        if out.contains("darwin") {
+            return "macos";
+        }
+        if out.contains("linux") {
+            return "linux";
+        }
+    }
+    return "linux";
+}
+
+fn param_str(params: map, key: string, dflt: string) -> string {
+    if params != null and params.has(key) and params[key] != null {
+        return string(params[key]).trim();
+    }
+    return dflt;
+}
+
+fn param_int(params: map, key: string, dflt: int, lo: int, hi: int) -> int {
+    if params != null and params.has(key) and params[key] != null {
+        let v = dflt;
+        try {
+            v = int(params[key]);
+        } catch (_e) {
+            return dflt;
+        }
+        return val.clamp_int(v, lo, hi);
+    }
+    return dflt;
+}
+
+fn param_bool(params: map, key: string, dflt: bool) -> bool {
+    if params != null and params.has(key) and params[key] != null {
+        let s = string(params[key]).lower();
+        return s == "true" or s == "1" or s == "yes";
+    }
+    return dflt;
+}
+
+fn format_display(bin: string, args: list) -> string {
+    if len(args) == 0 {
+        return bin;
+    }
+    return bin + " " + args.join(" ");
+}
+
+public fn os_command_spec(tool: string, params: map, os_name: string) {
+    let os_low = os_name.trim().lower();
+    let t = tool.trim().lower();
+
+    if t == "ping" {
+        let host = param_str(params, "host", "");
+        if not val.is_valid_host(host) {
+            return err("Invalid host/IP for ping");
+        }
+        let count = param_int(params, "count", 4, 1, 20);
+        let timeout_ms = param_int(params, "timeout_ms", 2000, 200, 10000);
+        if os_low == "windows" {
+            let args = list("-n", string(count), "-w", string(timeout_ms), host);
+            return ok(map("bin", "ping", "args", args, "display", format_display("ping", args)));
+        }
+        let timeout_sec = val.clamp_int(int((timeout_ms + 999) / 1000), 1, 10);
+        if os_low == "macos" {
+            let args = list("-c", string(count), "-W", string(timeout_ms), host);
+            return ok(map("bin", "ping", "args", args, "display", format_display("ping", args)));
+        }
+        let args = list("-c", string(count), "-W", string(timeout_sec), host);
+        return ok(map("bin", "ping", "args", args, "display", format_display("ping", args)));
+    }
+
+    if t == "traceroute" {
+        let host = param_str(params, "host", "");
+        if not val.is_valid_host(host) {
+            return err("Invalid host/IP for traceroute");
+        }
+        let hops = param_int(params, "max_hops", 30, 1, 64);
+        let numeric = param_bool(params, "numeric", true);
+        if os_low == "windows" {
+            let args = list("-h", string(hops));
+            if numeric {
+                args.push("-d");
+            }
+            args.push(host);
+            return ok(map("bin", "tracert", "args", args, "display", format_display("tracert", args)));
+        }
+        let args = list("-m", string(hops));
+        if numeric {
+            args.push("-n");
+        }
+        args.push(host);
+        return ok(map("bin", "traceroute", "args", args, "display", format_display("traceroute", args)));
+    }
+
+    if t == "nslookup" {
+        let host = param_str(params, "host", "");
+        if not val.is_valid_host(host) {
+            return err("Invalid domain/IP for nslookup");
+        }
+        let rtype = param_str(params, "type", "A").upper();
+        if not val.is_valid_dns_type(rtype) {
+            return err("Unsupported DNS record type");
+        }
+        let args = list("-type=" + rtype, host);
+        let server = param_str(params, "server", "");
+        if len(server) > 0 {
+            if not val.is_valid_host(server) {
+                return err("Invalid DNS server address");
+            }
+            args.push(server);
+        }
+        return ok(map("bin", "nslookup", "args", args, "display", format_display("nslookup", args)));
+    }
+
+    if t == "dig" {
+        let host = param_str(params, "host", "");
+        if not val.is_valid_host(host) {
+            return err("Invalid domain/IP for dig");
+        }
+        let rtype = param_str(params, "type", "A").upper();
+        if not val.is_valid_dns_type(rtype) {
+            return err("Unsupported DNS record type");
+        }
+        let args = list();
+        let server = param_str(params, "server", "");
+        if len(server) > 0 {
+            if not val.is_valid_host(server) {
+                return err("Invalid DNS server address");
+            }
+            args.push("@" + server);
+        }
+        args.push(host);
+        args.push(rtype);
+        if param_bool(params, "short", false) {
+            args.push("+short");
+        }
+        return ok(map("bin", "dig", "args", args, "display", format_display("dig", args)));
+    }
+
+    if t == "ipconfig" {
+        if os_low == "windows" {
+            let args = list();
+            if param_bool(params, "all", true) {
+                args.push("/all");
+            }
+            return ok(map("bin", "ipconfig", "args", args, "display", format_display("ipconfig", args)));
+        }
+        if os_low == "macos" {
+            let args = list("-a");
+            return ok(map("bin", "ifconfig", "args", args, "display", format_display("ifconfig", args)));
+        }
+        let args = list("addr", "show");
+        return ok(map("bin", "ip", "args", args, "display", format_display("ip", args)));
+    }
+
+    if t == "ifconfig" {
+        if os_low == "windows" {
+            let args = list("/all");
+            return ok(map("bin", "ipconfig", "args", args, "display", format_display("ipconfig", args)));
+        }
+        let args = list("-a");
+        return ok(map("bin", "ifconfig", "args", args, "display", format_display("ifconfig", args)));
+    }
+
+    if t == "hostname" {
+        let args = list();
+        if os_low == "linux" and param_bool(params, "fqdn", false) {
+            args.push("-f");
+        }
+        return ok(map("bin", "hostname", "args", args, "display", format_display("hostname", args)));
+    }
+
+    if t == "arp" {
+        let args = list("-a");
+        return ok(map("bin", "arp", "args", args, "display", format_display("arp", args)));
+    }
+
+    if t == "route" {
+        if os_low == "windows" {
+            let args = list("print");
+            return ok(map("bin", "route", "args", args, "display", format_display("route", args)));
+        }
+        if os_low == "macos" {
+            let args = list("-rn");
+            return ok(map("bin", "netstat", "args", args, "display", format_display("netstat", args)));
+        }
+        let args = list("route", "show");
+        return ok(map("bin", "ip", "args", args, "display", format_display("ip", args)));
+    }
+
+    if t == "interfaces" {
+        if os_low == "windows" {
+            let args = list("interface", "ipv4", "show", "interfaces");
+            return ok(map("bin", "netsh", "args", args, "display", format_display("netsh", args)));
+        }
+        if os_low == "macos" {
+            let args = list("-i");
+            return ok(map("bin", "netstat", "args", args, "display", format_display("netstat", args)));
+        }
+        let args = list("-br", "link", "show");
+        return ok(map("bin", "ip", "args", args, "display", format_display("ip", args)));
+    }
+
+    if t == "netstat" or t == "connections" {
+        if os_low == "windows" {
+            let args = list("-ano");
+            return ok(map("bin", "netstat", "args", args, "display", format_display("netstat", args)));
+        }
+        if os_low == "macos" {
+            let args = list("-anv");
+            return ok(map("bin", "netstat", "args", args, "display", format_display("netstat", args)));
+        }
+        let args = list("-tulnp");
+        return ok(map("bin", "ss", "args", args, "display", format_display("ss", args)));
+    }
+
+    if t == "open_ports" {
+        if os_low == "windows" {
+            let args = list("-an", "-p", "TCP");
+            return ok(map("bin", "netstat", "args", args, "display", format_display("netstat", args)));
+        }
+        if os_low == "macos" {
+            let args = list("-iTCP", "-sTCP:LISTEN", "-nP");
+            return ok(map("bin", "lsof", "args", args, "display", format_display("lsof", args)));
+        }
+        let args = list("-tuln");
+        return ok(map("bin", "ss", "args", args, "display", format_display("ss", args)));
+    }
+
+    if t == "net_stats" {
+        if os_low == "windows" {
+            let args = list("-es");
+            return ok(map("bin", "netstat", "args", args, "display", format_display("netstat", args)));
+        }
+        let args = list("-s");
+        return ok(map("bin", "netstat", "args", args, "display", format_display("netstat", args)));
+    }
+
+    if t == "whois" {
+        let query = param_str(params, "query", "");
+        if not val.is_valid_host(query) and not val.is_valid_asn(query) {
+            return err("Invalid domain, IP, or ASN for whois");
+        }
+        let args = list(query);
+        return ok(map("bin", "whois", "args", args, "display", format_display("whois", args)));
+    }
+
+    if t == "ssl_check" {
+        let host = param_str(params, "host", "");
+        if not val.is_valid_host(host) {
+            return err("Invalid host for ssl_check");
+        }
+        let port = param_int(params, "port", 443, 1, 65535);
+        let args = list("s_client", "-connect", host + ":" + string(port), "-servername", host);
+        return ok(map("bin", "openssl", "args", args, "display", format_display("openssl", args)));
+    }
+
+    return err("Unknown or non-OS diagnostic tool: " + tool);
+}
+
+public fn run_os_command(tool: string, params: map) {
+    let os_name = detect_os();
+    let spec_res = os_command_spec(tool, params, os_name);
+    if spec_res.is_err() {
+        return map(
+            "ok", false,
+            "os", os_name,
+            "command", "",
+            "code", 2,
+            "stdout", "",
+            "stderr", spec_res.unwrap_err(),
+            "duration_ms", 0
+        );
+    }
+    let spec = spec_res.unwrap();
+    let t0 = now_ms();
+    let res = exec_capture(spec["bin"], spec["args"], null);
+    let elapsed = now_ms() - t0;
+    if res.is_err() {
+        return map(
+            "ok", false,
+            "os", os_name,
+            "command", spec["display"],
+            "code", 1,
+            "stdout", "",
+            "stderr", string(res.unwrap_err()),
+            "duration_ms", elapsed
+        );
+    }
+    let cap = res.unwrap();
+    let exit_code = int(cap["code"]);
+    return map(
+        "ok", exit_code == 0,
+        "os", os_name,
+        "command", spec["display"],
+        "code", exit_code,
+        "stdout", string(cap["stdout"]),
+        "stderr", string(cap["stderr"]),
+        "duration_ms", elapsed
+    );
+}

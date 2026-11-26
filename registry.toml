@@ -1,0 +1,7 @@
+# Host-portable Spid3r Package Registry descriptor
+name = "Spid3r Official Package Registry"
+api_version = "1"
+url = "https://spid3r-spkg.github.io"
+public_key = "b3e682e6e8620909a3afd86548e32e453ea07436e61b088de70931b915ed65a5"
+moved_to = ""
+mirrors = []

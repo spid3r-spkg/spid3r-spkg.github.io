@@ -19,6 +19,17 @@ Or declare in `spider.toml`:
 hello = { version = "^0.1.0" }
 ```
 
+## Network Tools Package & Workbench (`nettools`)
+
+This repository also ships the signed **`nettools`** (`0.1.0`) package and an interactive 35-tool browser diagnostic workbench at [`network-tools.html`](./network-tools.html) covering Connectivity, DNS (DoH), IP/Subnet/CIDR Math, Network Configuration, Connection Monitoring, Web/HTTP/TLS Diagnostics, and Domain/ASN/RDAP lookups.
+
+```bash
+spkg install nettools
+# Optional: start the loopback-only Spid3r companion agent (127.0.0.1:8787)
+# to enable live OS command execution (ping, traceroute, tcp_ping, ipconfig, netstat, etc.)
+spid3r run vendor/nettools/src/server.matrix
+```
+
 ## Enforce Ed25519 Signature Verification
 
 ```ini

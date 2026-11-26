@@ -1,0 +1,264 @@
+// lib.matrix — Public entry module for the Spid3r nettools package.
+
+import "http" as http;
+import "validate" as val;
+import "ipmath" as ipm;
+import "commands" as cmd;
+
+public const VERSION: string = "0.1.0";
+
+public fn is_valid_host(s: string) -> bool {
+    return val.is_valid_host(s);
+}
+
+public fn is_valid_ipv4(s: string) -> bool {
+    return val.is_valid_ipv4(s);
+}
+
+public fn is_valid_cidr(s: string) -> bool {
+    return val.is_valid_cidr(s);
+}
+
+public fn is_valid_port(p: int) -> bool {
+    return val.is_valid_port(p);
+}
+
+public fn is_valid_http_url(u: string) -> bool {
+    return val.is_valid_http_url(u);
+}
+
+public fn detect_os() -> string {
+    return cmd.detect_os();
+}
+
+public fn classify_ipv4(ip: string) {
+    return ipm.classify_ipv4(ip);
+}
+
+public fn subnet_calc(cidr: string) {
+    return ipm.subnet_calc(cidr);
+}
+
+public fn ip_range_calc(start_ip: string, end_ip: string) {
+    return ipm.ip_range_calc(start_ip, end_ip);
+}
+
+public fn os_command_spec(tool: string, params: map, os_name: string) {
+    return cmd.os_command_spec(tool, params, os_name);
+}
+
+public fn run_os_command(tool: string, params: map) {
+    return cmd.run_os_command(tool, params);
+}
+
+fn format_target_addr(host: string, port: int) -> string {
+    if host.contains(":") and not host.starts_with("[") {
+        return "[" + host + "]:" + string(port);
+    }
+    return host + ":" + string(port);
+}
+
+/// Check a single TCP port using Spid3r's native `tcp_connect`.
+public fn check_port(host: string, port: int) {
+    let h = host.trim();
+    if not val.is_valid_host(h) {
+        return err("Invalid host: " + host);
+    }
+    if not val.is_valid_port(port) {
+        return err("Port must be between 1 and 65535");
+    }
+    let addr = format_target_addr(h, port);
+    let t0 = now_ms();
+    let res = tcp_connect(addr);
+    let rtt = now_ms() - t0;
+    if res.is_ok() {
+        let sock = res.unwrap();
+        try {
+            tcp_close(sock);
+        } catch (_e) {}
+        return ok(map(
+            "host", h,
+            "port", port,
+            "address", addr,
+            "open", true,
+            "rtt_ms", rtt,
+            "message", "Connected"
+        ));
+    }
+    return ok(map(
+        "host", h,
+        "port", port,
+        "address", addr,
+        "open", false,
+        "rtt_ms", rtt,
+        "message", string(res.unwrap_err())
+    ));
+}
+
+/// Perform N sequential TCP handshake probes (`1 <= count <= 10`).
+public fn tcp_ping(host: string, port: int, count: int) {
+    let h = host.trim();
+    if not val.is_valid_host(h) {
+        return err("Invalid host: " + host);
+    }
+    if not val.is_valid_port(port) {
+        return err("Port must be between 1 and 65535");
+    }
+    let n = val.clamp_int(count, 1, 10);
+    let addr = format_target_addr(h, port);
+    let samples = list();
+    let ok_count = 0;
+    let sum_ms = 0;
+    let min_ms = -1;
+    let max_ms = 0;
+
+    let i = 0;
+    while i < n {
+        let t0 = now_ms();
+        let res = tcp_connect(addr);
+        let rtt = now_ms() - t0;
+        let is_up = res.is_ok();
+        let detail = "";
+        if is_up {
+            ok_count += 1;
+            sum_ms += rtt;
+            if min_ms < 0 or rtt < min_ms {
+                min_ms = rtt;
+            }
+            if rtt > max_ms {
+                max_ms = rtt;
+            }
+            detail = "Connected";
+            try {
+                tcp_close(res.unwrap());
+            } catch (_e) {}
+        } else {
+            detail = string(res.unwrap_err());
+        }
+        samples.push(map(
+            "seq", i + 1,
+            "open", is_up,
+            "rtt_ms", rtt,
+            "detail", detail
+        ));
+        i += 1;
+        if i < n {
+            sleep_ms(120);
+        }
+    }
+
+    let avg_ms = 0;
+    if ok_count > 0 {
+        avg_ms = int(sum_ms / ok_count);
+    } else {
+        min_ms = 0;
+    }
+    let loss_pct = int(((n - ok_count) * 100) / n);
+    return ok(map(
+        "host", h,
+        "port", port,
+        "address", addr,
+        "sent", n,
+        "received", ok_count,
+        "loss_pct", loss_pct,
+        "min_ms", min_ms,
+        "avg_ms", avg_ms,
+        "max_ms", max_ms,
+        "samples", samples
+    ));
+}
+
+/// Inspect an HTTP(S) URL with Spid3r's native `http_fetch`.
+public fn http_inspect(method: string, url: string, headers: map, body: string) {
+    let m = method.trim().upper();
+    if m != "GET" and m != "HEAD" and m != "POST" and m != "PUT" and m != "DELETE" and m != "OPTIONS" {
+        return err("Unsupported HTTP method: " + method);
+    }
+    if not val.is_valid_http_url(url) {
+        return err("Invalid HTTP/HTTPS URL");
+    }
+    let t0 = now_ms();
+    let res = http.http_fetch(m, url.trim(), headers, body, null);
+    let elapsed = now_ms() - t0;
+    if res.is_err() {
+        return err(string(res.unwrap_err()));
+    }
+    let resp = res.unwrap();
+    let resp_body = "";
+    if resp.has("body") and resp["body"] != null {
+        resp_body = string(resp["body"]);
+        if len(resp_body) > 65536 {
+            resp_body = resp_body.slice(0, 65536) + "\n... [truncated at 64 KiB]";
+        }
+    }
+    return ok(map(
+        "method", m,
+        "url", url.trim(),
+        "status", resp["status"],
+        "headers", resp["headers"],
+        "body", resp_body,
+        "duration_ms", elapsed
+    ));
+}
+
+/// Query DNS-over-HTTPS (Cloudflare JSON API) from Spid3r.
+public fn dns_doh(name: string, rtype: string) {
+    let h = name.trim();
+    let t = rtype.trim().upper();
+    if not val.is_valid_host(h) {
+        return err("Invalid hostname for DNS query");
+    }
+    if not val.is_valid_dns_type(t) {
+        return err("Unsupported DNS record type: " + rtype);
+    }
+    let url = "https://cloudflare-dns.com/dns-query?name=" + h + "&type=" + t;
+    let hdrs = map("Accept", "application/dns-json");
+    let t0 = now_ms();
+    let res = http.http_fetch("GET", url, hdrs, null, null);
+    let elapsed = now_ms() - t0;
+    if res.is_err() {
+        return err(string(res.unwrap_err()));
+    }
+    let resp = res.unwrap();
+    let data = json_parse(string(resp["body"]));
+    return ok(map(
+        "name", h,
+        "type", t,
+        "duration_ms", elapsed,
+        "response", data
+    ));
+}
+
+/// Query RDAP registration metadata for a domain, IP, or ASN.
+public fn whois_rdap(query: string) {
+    let q = query.trim();
+    let path = "";
+    if val.is_valid_ipv4(q) or val.is_valid_ipv6(q) {
+        path = "ip/" + q;
+    } elif val.is_valid_asn(q) {
+        let num = q.upper();
+        if num.starts_with("AS") {
+            num = num.slice(2);
+        }
+        path = "autnum/" + num;
+    } elif val.is_valid_host(q) {
+        path = "domain/" + q.lower();
+    } else {
+        return err("Invalid domain, IP, or ASN for RDAP lookup");
+    }
+    let url = "https://rdap.org/" + path;
+    let hdrs = map("Accept", "application/rdap+json, application/json");
+    let t0 = now_ms();
+    let res = http.http_fetch("GET", url, hdrs, null, null);
+    let elapsed = now_ms() - t0;
+    if res.is_err() {
+        return err(string(res.unwrap_err()));
+    }
+    let resp = res.unwrap();
+    return ok(map(
+        "status", resp["status"],
+        "url", url,
+        "duration_ms", elapsed,
+        "body", string(resp["body"])
+    ));
+}

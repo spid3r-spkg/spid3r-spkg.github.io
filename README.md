@@ -21,7 +21,9 @@ hello = { version = "^0.1.0" }
 
 ## Network Tools Package & Workbench (`nettools`)
 
-This repository also ships the signed **`nettools`** (`0.1.0`) package and an interactive 35-tool browser diagnostic workbench at [`network-tools.html`](./network-tools.html) covering Connectivity, DNS (DoH), IP/Subnet/CIDR Math, Network Configuration, Connection Monitoring, Web/HTTP/TLS Diagnostics, and Domain/ASN/RDAP lookups.
+This repository also ships the signed **`nettools`** (`0.1.0`) package and its interactive 35-tool browser diagnostic workbench inside [`nettools/`](./nettools/) ([`nettools/index.html`](./nettools/index.html)) covering Connectivity, DNS (DoH), IP/Subnet/CIDR Math, Network Configuration, Connection Monitoring, Web/HTTP/TLS Diagnostics, and Domain/ASN/RDAP lookups.
+
+Any package in this registry that includes `<pkg>/index.html` is discovered dynamically by `index.html` and automatically gets an **Open UI** button alongside all packages indexed in `catalog.txt`.
 
 ```bash
 spkg install nettools

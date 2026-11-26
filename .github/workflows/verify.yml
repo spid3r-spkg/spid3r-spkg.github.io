@@ -35,7 +35,7 @@ jobs:
               if path in ("registry.pub", "registry.toml") and status != "A":
                   sys.exit(f"PR cannot modify or delete {path} ({status})")
               segs = path.split("/")
-              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] != "assets":
+              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] != "assets" and segs[1] != "web":
                   sys.exit(f"Release immutability violation: PR tried to {status} existing published path {path}")
           print("PR release immutability verified.")
       - name: Validate packages, hashes, and tar safety

@@ -692,7 +692,6 @@
       </a>
       <nav class="nav-links" aria-label="Registry navigation">
         <a class="nav-link" href="#browse">Browse</a>
-        <a class="nav-link" href="./network-tools.html">Network Tools</a>
         <a class="nav-link" href="#quickstart">Quickstart</a>
         <a class="nav-link" href="#security">Security</a>
         <a class="nav-link" href="#publish">Publish &amp; Host</a>
@@ -890,7 +889,7 @@ trust_pk = loading...</pre>
 
   <footer>
     <span>Spid3r Package Registry · Powered by <code>spkg</code> static verifiable artifacts</span>
-    <span>Files: <a href="./catalog.txt">catalog.txt</a> · <a href="./registry.toml">registry.toml</a> · <a href="./registry.pub">registry.pub</a> · <a href="./network-tools.html">Network Tools</a></span>
+    <span>Files: <a href="./catalog.txt">catalog.txt</a> · <a href="./registry.toml">registry.toml</a> · <a href="./registry.pub">registry.pub</a></span>
   </footer>
 
   <script>
@@ -1113,11 +1112,11 @@ trust_pk = loading...</pre>
 
           foot.appendChild(cmdBox);
           foot.appendChild(copyBtn);
-          if (pkg.name === 'nettools') {
+          if (pkg.webUrl) {
             var launchLink = document.createElement('a');
             launchLink.className = 'btn btn-primary';
-            launchLink.href = './network-tools.html';
-            launchLink.textContent = 'Web UI';
+            launchLink.href = pkg.webUrl;
+            launchLink.textContent = 'Open UI';
             foot.appendChild(launchLink);
           }
           foot.appendChild(inspectBtn);
@@ -1199,11 +1198,11 @@ trust_pk = loading...</pre>
         var base = './' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(ver) + '/';
         var links = document.getElementById('modalLinks');
         links.textContent = '';
-        if (pkg.name === 'nettools') {
+        if (pkg.webUrl) {
           var wb = document.createElement('a');
           wb.className = 'btn btn-primary';
-          wb.href = './network-tools.html';
-          wb.textContent = 'Launch Network Tools UI';
+          wb.href = pkg.webUrl;
+          wb.textContent = 'Open Package UI';
           links.appendChild(wb);
         }
         [
@@ -1346,6 +1345,21 @@ trust_pk = loading...</pre>
           document.getElementById('kpiVerCount').textContent = String(totalReleases);
           syncCategoryPills();
           renderCatalog();
+
+          state.packages.forEach(function (pkg) {
+            var uiUrl = './' + encodeURIComponent(pkg.name) + '/index.html';
+            fetch(uiUrl, { method: 'HEAD' })
+              .then(function (r) {
+                if (r.ok) {
+                  pkg.webUrl = './' + encodeURIComponent(pkg.name) + '/';
+                  renderCatalog();
+                  if (state.modalPkg === pkg) {
+                    loadVersionDetails(pkg, state.modalVer || pkg.latest);
+                  }
+                }
+              })
+              .catch(function () {});
+          });
 
           if (window.location.hash && window.location.hash.indexOf('#pkg/') === 0) {
             var want = decodeURIComponent(window.location.hash.slice(5));

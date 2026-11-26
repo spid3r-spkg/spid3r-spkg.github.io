@@ -35,7 +35,7 @@ jobs:
               if path in ("registry.pub", "registry.toml") and status != "A":
                   sys.exit(f"PR cannot modify or delete {path} ({status})")
               segs = path.split("/")
-              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] != "assets" and segs[1] != "web":
+              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] != "assets":
                   sys.exit(f"Release immutability violation: PR tried to {status} existing published path {path}")
           print("PR release immutability verified.")
       - name: Validate packages, hashes, and tar safety
@@ -74,7 +74,11 @@ jobs:
               if s and not s.startswith("#"):
                   catalog_names.add(s.split("\t")[0].strip())
 
+          FORBIDDEN_WEB_EXTS = {".html", ".htm", ".xhtml", ".js", ".mjs", ".cjs", ".css", ".svg", ".php", ".wasm"}
           for pkg in pkg_dirs:
+              for f in pkg.rglob("*"):
+                  if f.is_file() and f.suffix.lower() in FORBIDDEN_WEB_EXTS:
+                      sys.exit(f"{f}: forbidden web/script file inside package directory (only standard release files and plain-text/Markdown docs like README.md are permitted)")
               idx = pkg / "index.txt"
               if not idx.is_file():
                   sys.exit(f"{pkg}: missing index.txt")

@@ -1,35 +1,23 @@
 # Spid3r Package Registry (`spid3r-spkg.github.io`)
 
-Official static package registry for [Spid3r](https://github.com/needyamin/spid3r) (`spkg` / `spid3r`).
+Official static, Ed25519-signed package registry for [Spid3r](https://github.com/needyamin/spid3r) (`spkg` / `spid3r`).
 
 ## Install Packages
 
 ```bash
-spkg install hello
-spkg install hello==0.1.0
-spkg search hello
+spkg search
+spkg install <package>
+spkg install <package>==<version>
+spkg tree
 spkg verify
-spkg uninstall hello
+spkg uninstall <package>
 ```
 
 Or declare in `spider.toml`:
 
 ```toml
 [dependencies]
-hello = { version = "^0.1.0" }
-```
-
-## Network Tools Package & Workbench (`nettools`)
-
-This repository also ships the signed **`nettools`** (`0.1.0`) package and its interactive 35-tool browser diagnostic workbench inside [`nettools/`](./nettools/) ([`nettools/index.html`](./nettools/index.html)) covering Connectivity, DNS (DoH), IP/Subnet/CIDR Math, Network Configuration, Connection Monitoring, Web/HTTP/TLS Diagnostics, and Domain/ASN/RDAP lookups.
-
-Any package in this registry that includes `<pkg>/index.html` is discovered dynamically by `index.html` and automatically gets an **Open UI** button alongside all packages indexed in `catalog.txt`.
-
-```bash
-spkg install nettools
-# Optional: start the loopback-only Spid3r companion agent (127.0.0.1:8787)
-# to enable live OS command execution (ping, traceroute, tcp_ping, ipconfig, netstat, etc.)
-spid3r run vendor/nettools/src/server.matrix
+nettools = { version = "^0.1.0" }
 ```
 
 ## Enforce Ed25519 Signature Verification
@@ -41,7 +29,7 @@ registry = https://spid3r-spkg.github.io
 trust_pk = <64-hex-public-key-from-registry.pub>
 ```
 
-## Publishing a New Package Version via Pull Request
+## Publishing a Package via Pull Request
 
 1. Prepare your package with `spider.toml` and `src/` (mark exported APIs with `public`).
 2. Generate release files into a fork of this repository using a publisher signing seed:
@@ -51,4 +39,5 @@ trust_pk = <64-hex-public-key-from-registry.pub>
    ```
 
    **Security Warning:** Never commit `registry.key` or any `*.key` file. Pull requests containing secret key files are rejected automatically.
-3. Open a pull request. CI checks that no private keys are present and validates `index.txt`, `sha256.txt`, `spider.toml`, `package.tar`, and `catalog.txt`.
+3. Optional documentation: add a plain-text or Markdown `<package>/README.md` file inside your package directory. The registry portal renders `README.md` automatically using a standardized safe Markdown view. **Custom `.html`, `.js`, `.css`, or `.svg` files inside package directories are rejected by CI.**
+4. Open a pull request. CI checks that no private keys or forbidden web/script files are present and validates `index.txt`, `sha256.txt`, `spider.toml`, `package.tar`, and `catalog.txt`.

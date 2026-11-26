@@ -1,0 +1,276 @@
+// ipmath.matrix — Deterministic 32-bit IPv4, Subnet, CIDR, and Range calculations.
+
+import "validate" as val;
+
+const U32_MASK: int = 4294967295;
+
+fn u32(x: int) -> int {
+    return bit_and(x, U32_MASK);
+}
+
+fn pow2(n: int) -> int {
+    return shl(1, n);
+}
+
+public fn parse_ipv4(ip: string) {
+    let t = ip.trim();
+    if not val.is_valid_ipv4(t) {
+        return err("Invalid IPv4 address: " + ip);
+    }
+    let parts = t.split(".");
+    let a = int(parts[0]);
+    let b = int(parts[1]);
+    let c = int(parts[2]);
+    let d = int(parts[3]);
+    let n = bit_or(bit_or(shl(a, 24), shl(b, 16)), bit_or(shl(c, 8), d));
+    return ok(u32(n));
+}
+
+public fn format_ipv4(n: int) -> string {
+    let v = u32(n);
+    let a = bit_and(shr(v, 24), 255);
+    let b = bit_and(shr(v, 16), 255);
+    let c = bit_and(shr(v, 8), 255);
+    let d = bit_and(v, 255);
+    return string(a) + "." + string(b) + "." + string(c) + "." + string(d);
+}
+
+fn byte_to_bin(b: int) -> string {
+    let bits = list();
+    let i = 7;
+    while i >= 0 {
+        if bit_and(shr(b, i), 1) == 1 {
+            bits.push("1");
+        } else {
+            bits.push("0");
+        }
+        i -= 1;
+    }
+    return bits.join("");
+}
+
+public fn ipv4_binary(n: int) -> string {
+    let v = u32(n);
+    let a = byte_to_bin(bit_and(shr(v, 24), 255));
+    let b = byte_to_bin(bit_and(shr(v, 16), 255));
+    let c = byte_to_bin(bit_and(shr(v, 8), 255));
+    let d = byte_to_bin(bit_and(v, 255));
+    return a + "." + b + "." + c + "." + d;
+}
+
+public fn prefix_to_mask_int(prefix: int) -> int {
+    if prefix <= 0 {
+        return 0;
+    }
+    if prefix >= 32 {
+        return U32_MASK;
+    }
+    let host_bits = 32 - prefix;
+    return u32(bit_xor(U32_MASK, pow2(host_bits) - 1));
+}
+
+public fn classify_ipv4(ip: string) {
+    let parsed = parse_ipv4(ip);
+    if parsed.is_err() {
+        return err(parsed.unwrap_err());
+    }
+    let n = parsed.unwrap();
+    let o1 = bit_and(shr(n, 24), 255);
+    let o2 = bit_and(shr(n, 16), 255);
+    let o3 = bit_and(shr(n, 8), 255);
+
+    let ip_cls = "Class E (Experimental)";
+    if o1 < 128 {
+        ip_cls = "Class A";
+    } elif o1 < 192 {
+        ip_cls = "Class B";
+    } elif o1 < 224 {
+        ip_cls = "Class C";
+    } elif o1 < 240 {
+        ip_cls = "Class D (Multicast)";
+    }
+
+    let scope = "Public Unicast";
+    let rfc = "Public Internet Routable";
+    let is_priv = false;
+    let is_routable = true;
+    let desc = "Globally routable unicast IPv4 address";
+
+    if n == 0 {
+        scope = "Unspecified";
+        rfc = "RFC 1122";
+        is_routable = false;
+        desc = "This host on this network (0.0.0.0)";
+    } elif n == U32_MASK {
+        scope = "Limited Broadcast";
+        rfc = "RFC 919";
+        is_routable = false;
+        desc = "Local subnet limited broadcast";
+    } elif o1 == 10 {
+        scope = "Private (RFC 1918)";
+        rfc = "RFC 1918 (10.0.0.0/8)";
+        is_priv = true;
+        is_routable = false;
+        desc = "Private enterprise network block";
+    } elif o1 == 172 and o2 >= 16 and o2 <= 31 {
+        scope = "Private (RFC 1918)";
+        rfc = "RFC 1918 (172.16.0.0/12)";
+        is_priv = true;
+        is_routable = false;
+        desc = "Private medium-scale network block";
+    } elif o1 == 192 and o2 == 168 {
+        scope = "Private (RFC 1918)";
+        rfc = "RFC 1918 (192.168.0.0/16)";
+        is_priv = true;
+        is_routable = false;
+        desc = "Private LAN / SOHO network block";
+    } elif o1 == 127 {
+        scope = "Loopback";
+        rfc = "RFC 1122 (127.0.0.0/8)";
+        is_routable = false;
+        desc = "Host loopback interface address";
+    } elif o1 == 169 and o2 == 254 {
+        scope = "Link-Local (APIPA)";
+        rfc = "RFC 3927 (169.254.0.0/16)";
+        is_routable = false;
+        desc = "Auto-configured link-local address when DHCP fails";
+    } elif o1 == 100 and o2 >= 64 and o2 <= 127 {
+        scope = "Carrier-Grade NAT";
+        rfc = "RFC 6598 (100.64.0.0/10)";
+        is_priv = true;
+        is_routable = false;
+        desc = "Shared ISP CGNAT transition address space";
+    } elif o1 == 192 and o2 == 0 and o3 == 2 {
+        scope = "Documentation (TEST-NET-1)";
+        rfc = "RFC 5737";
+        is_routable = false;
+        desc = "Reserved for documentation and examples";
+    } elif o1 == 198 and o2 == 51 and o3 == 100 {
+        scope = "Documentation (TEST-NET-2)";
+        rfc = "RFC 5737";
+        is_routable = false;
+        desc = "Reserved for documentation and examples";
+    } elif o1 == 203 and o2 == 0 and o3 == 113 {
+        scope = "Documentation (TEST-NET-3)";
+        rfc = "RFC 5737";
+        is_routable = false;
+        desc = "Reserved for documentation and examples";
+    } elif o1 >= 224 and o1 <= 239 {
+        scope = "Multicast";
+        rfc = "RFC 5771 (224.0.0.0/4)";
+        is_routable = false;
+        desc = "IPv4 multicast group address";
+    } elif o1 >= 240 {
+        scope = "Reserved";
+        rfc = "RFC 1112 (240.0.0.0/4)";
+        is_routable = false;
+        desc = "Reserved for future use";
+    }
+
+    return ok(map(
+        "ip", format_ipv4(n),
+        "class", ip_cls,
+        "scope", scope,
+        "rfc", rfc,
+        "is_private", is_priv,
+        "is_routable", is_routable,
+        "description", desc
+    ));
+}
+
+public fn subnet_calc(cidr: string) {
+    let t = cidr.trim();
+    if not val.is_valid_cidr(t) {
+        return err("Invalid IPv4 CIDR notation (expected x.x.x.x/prefix): " + cidr);
+    }
+    let parts = t.split("/");
+    let ip_int = parse_ipv4(parts[0]).unwrap();
+    let prefix = int(parts[1]);
+    let mask_int = prefix_to_mask_int(prefix);
+    let wildcard_int = u32(bit_xor(U32_MASK, mask_int));
+    let net_int = u32(bit_and(ip_int, mask_int));
+    let bcast_int = u32(bit_or(net_int, wildcard_int));
+
+    let total = pow2(32 - prefix);
+    let usable = 0;
+    let first_int = net_int;
+    let last_int = bcast_int;
+    if prefix == 32 {
+        usable = 1;
+        first_int = net_int;
+        last_int = net_int;
+    } elif prefix == 31 {
+        usable = 2;
+        first_int = net_int;
+        last_int = bcast_int;
+    } else {
+        usable = total - 2;
+        first_int = u32(net_int + 1);
+        last_int = u32(bcast_int - 1);
+    }
+
+    let info = classify_ipv4(format_ipv4(net_int)).unwrap();
+    return ok(map(
+        "cidr", format_ipv4(net_int) + "/" + string(prefix),
+        "input_ip", format_ipv4(ip_int),
+        "prefix", prefix,
+        "netmask", format_ipv4(mask_int),
+        "wildcard", format_ipv4(wildcard_int),
+        "network", format_ipv4(net_int),
+        "broadcast", format_ipv4(bcast_int),
+        "first_host", format_ipv4(first_int),
+        "last_host", format_ipv4(last_int),
+        "total_addresses", total,
+        "usable_hosts", usable,
+        "ip_class", info["class"],
+        "scope", info["scope"],
+        "binary_ip", ipv4_binary(ip_int),
+        "binary_mask", ipv4_binary(mask_int)
+    ));
+}
+
+public fn ip_range_calc(start_ip: string, end_ip: string) {
+    let s_res = parse_ipv4(start_ip);
+    if s_res.is_err() {
+        return err(s_res.unwrap_err());
+    }
+    let e_res = parse_ipv4(end_ip);
+    if e_res.is_err() {
+        return err(e_res.unwrap_err());
+    }
+    let start_n = s_res.unwrap();
+    let end_n = e_res.unwrap();
+    if start_n > end_n {
+        return err("Start IP must be less than or equal to End IP");
+    }
+
+    let cidrs = list();
+    let cur = start_n;
+    while cur <= end_n {
+        let max_step = 32;
+        while max_step > 0 {
+            let m = prefix_to_mask_int(max_step - 1);
+            if bit_and(cur, m) != cur {
+                break;
+            }
+            let block_end = u32(cur + pow2(32 - (max_step - 1)) - 1);
+            if block_end > end_n {
+                break;
+            }
+            max_step -= 1;
+        }
+        let size = pow2(32 - max_step);
+        cidrs.push(format_ipv4(cur) + "/" + string(max_step));
+        if cur + size > U32_MASK {
+            break;
+        }
+        cur = cur + size;
+    }
+
+    return ok(map(
+        "start", format_ipv4(start_n),
+        "end", format_ipv4(end_n),
+        "total_addresses", (end_n - start_n) + 1,
+        "cidrs", cidrs
+    ));
+}

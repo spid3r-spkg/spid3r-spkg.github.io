@@ -1,47 +1,13 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Spid3r Package Registry (spkg)</title>
   <link rel="icon" type="image/png" href="./assets/spid3r.png" />
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('spkg-reg-theme');
-        if (t === 'light' || t === 'dark') {
-          document.documentElement.setAttribute('data-theme', t);
-        }
-      } catch (e) {}
-    })();
-  </script>
   <style>
     :root {
-      --bg-base: #080c14;
-      --bg-surface: #0f1623;
-      --bg-card: #141d2e;
-      --bg-card-hover: #192439;
-      --bg-code: #060a11;
-      --bg-chip: rgba(56, 189, 248, 0.12);
-      --border: #1e293b;
-      --border-strong: #334155;
-      --fg: #f8fafc;
-      --fg-secondary: #cbd5e1;
-      --fg-muted: #94a3b8;
-      --accent: #04AA6D;
-      --accent-hover: #059862;
-      --accent-soft: rgba(4, 170, 109, 0.15);
-      --cyan: #38bdf8;
-      --amber: #fbbf24;
-      --rose: #fb7185;
-      --shadow: 0 12px 32px rgba(0, 0, 0, 0.36);
-      --radius: 12px;
-      --radius-sm: 8px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    }
-
-    html[data-theme="light"] {
-      --bg-base: #f4f7fb;
+      --bg-base: #f8fafc;
       --bg-surface: #ffffff;
       --bg-card: #ffffff;
       --bg-card-hover: #f1f5f9;
@@ -52,7 +18,16 @@
       --fg: #0f172a;
       --fg-secondary: #334155;
       --fg-muted: #64748b;
-      --shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+      --accent: #04AA6D;
+      --accent-hover: #059862;
+      --accent-soft: rgba(4, 170, 109, 0.12);
+      --cyan: #0284c7;
+      --amber: #d97706;
+      --rose: #e11d48;
+      --shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
 
     * { box-sizing: border-box; }
@@ -62,8 +37,8 @@
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background:
-        radial-gradient(ellipse 85% 42% at 50% -10%, rgba(4, 170, 109, 0.16), transparent),
-        radial-gradient(ellipse 55% 32% at 88% 4%, rgba(56, 189, 248, 0.11), transparent),
+        radial-gradient(ellipse 85% 42% at 50% -10%, rgba(4, 170, 109, 0.1), transparent),
+        radial-gradient(ellipse 55% 32% at 88% 4%, rgba(2, 132, 199, 0.07), transparent),
         var(--bg-base);
       color: var(--fg);
       line-height: 1.6;
@@ -87,23 +62,22 @@
       font-family: var(--mono);
       font-size: 0.87em;
       background: var(--bg-chip);
-      color: var(--cyan);
+      color: #0369a1;
       padding: 0.12rem 0.38rem;
       border-radius: 5px;
     }
-    html[data-theme="light"] code { color: #0369a1; }
 
     pre {
       margin: 0;
       background: var(--bg-code);
       color: #e2e8f0;
-      border: 1px solid var(--border);
+      border: 1px solid #1e293b;
       border-radius: var(--radius-sm);
       padding: 0.9rem 1rem;
       overflow-x: auto;
       font-family: var(--mono);
       font-size: 0.85rem;
-      line-height: 1.52;
+      line-height: 1.55;
     }
     pre code {
       background: transparent;
@@ -112,16 +86,28 @@
       font-size: inherit;
     }
 
+    /* Syntax highlighting tokens inside dark terminal <pre> blocks */
+    .tok-comment { color: #64748b; font-style: italic; }
+    .tok-string  { color: #86efac; }
+    .tok-kw      { color: #c084fc; font-weight: 600; }
+    .tok-cmd     { color: #38bdf8; font-weight: 600; }
+    .tok-flag    { color: #fbbf24; }
+    .tok-num     { color: #fb923c; }
+    .tok-fn      { color: #60a5fa; }
+    .tok-sec     { color: #f472b6; font-weight: 700; }
+    .tok-key     { color: #7dd3fc; }
+    .tok-var     { color: #fde047; }
+    .tok-op      { color: #94a3b8; }
+
     /* Topbar */
     .topbar {
       position: sticky;
       top: 0;
       z-index: 50;
-      background: rgba(15, 22, 35, 0.88);
+      background: rgba(255, 255, 255, 0.92);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
     }
-    html[data-theme="light"] .topbar { background: rgba(255, 255, 255, 0.92); }
 
     .topbar-inner {
       max-width: 1220px;
@@ -802,7 +788,6 @@
         <a class="nav-link" href="#quickstart" id="navQuickstart">Get Started</a>
         <a class="nav-link" href="#security" id="navSecurity">Security</a>
         <a class="nav-link" href="#publish" id="navPublish">Publish</a>
-        <button class="btn" id="themeBtn" type="button" aria-label="Toggle color theme">Toggle Theme</button>
       </nav>
     </div>
   </header>
@@ -1029,9 +1014,122 @@ trust_pk = loading...</pre>
     <span>Files: <a href="./catalog.txt">catalog.txt</a> · <a href="./registry.toml">registry.toml</a> · <a href="./registry.pub">registry.pub</a></span>
   </footer>
 
-  <script>
+    <script>
     (function (root) {
       'use strict';
+
+      /* ---- Zero-Dependency DOM Syntax Highlighter (textContent only) ---- */
+      function addTok(parent, doc, text, cls) {
+        if (!text) return;
+        if (!cls) {
+          parent.appendChild(doc.createTextNode(text));
+          return;
+        }
+        var sp = doc.createElement('span');
+        sp.className = 'tok-' + cls;
+        sp.textContent = text;
+        parent.appendChild(sp);
+      }
+
+      function detectLang(raw, hint) {
+        var h = String(hint || '').trim().toLowerCase();
+        if (h === 'toml' || h === 'ini') return 'toml';
+        if (h === 'matrix' || h === 'spid3r' || h === 'mt' || h === 'rust' || h === 'js') return 'matrix';
+        if (h === 'bash' || h === 'sh' || h === 'zsh' || h === 'shell' || h === 'powershell' || h === 'cli') return 'bash';
+        var s = String(raw || '').trim();
+        if (/^\[[a-zA-Z0-9_.-]+\]/m.test(s) || /^[a-zA-Z0-9_-]+\s*=\s*["{\[]/m.test(s)) return 'toml';
+        if (/\b(fn|let|const|public|import|return|if|elif|else|while|for|try|catch)\b/.test(s)) return 'matrix';
+        return 'bash';
+      }
+
+      function highlightLineBash(el, doc, line) {
+        var cIdx = line.indexOf('#');
+        var body = cIdx >= 0 ? line.slice(0, cIdx) : line;
+        var comment = cIdx >= 0 ? line.slice(cIdx) : '';
+        var re = /("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|[A-Z][A-Z0-9_]*=|--?[a-zA-Z0-9_-]+|\b(?:spkg|spid3r|git|curl|python|node|export)\b|==|[<>|&;])/g;
+        var last = 0, m, seenCmd = false;
+        while ((m = re.exec(body)) !== null) {
+          if (m.index > last) addTok(el, doc, body.slice(last, m.index), '');
+          var t = m[0];
+          if (t.charAt(0) === '"' || t.charAt(0) === "'") addTok(el, doc, t, 'string');
+          else if (t.charAt(t.length - 1) === '=') addTok(el, doc, t, 'var');
+          else if (t.charAt(0) === '-') addTok(el, doc, t, 'flag');
+          else if (t === '==' || t.length === 1) addTok(el, doc, t, 'op');
+          else { addTok(el, doc, t, 'cmd'); seenCmd = true; }
+          last = re.lastIndex;
+        }
+        if (last < body.length) {
+          var rest = body.slice(last);
+          if (!seenCmd && /^\s*[a-zA-Z0-9_.-]+/.test(rest)) {
+            var lead = rest.match(/^(\s*)([a-zA-Z0-9_.-]+)([\s\S]*)$/);
+            if (lead) {
+              addTok(el, doc, lead[1], '');
+              addTok(el, doc, lead[2], 'cmd');
+              addTok(el, doc, lead[3], '');
+            } else addTok(el, doc, rest, '');
+          } else {
+            addTok(el, doc, rest, '');
+          }
+        }
+        if (comment) addTok(el, doc, comment, 'comment');
+      }
+
+      function highlightLineToml(el, doc, line) {
+        var trimmed = line.trim();
+        if (trimmed.charAt(0) === '#') { addTok(el, doc, line, 'comment'); return; }
+        if (/^\s*\[[^\]]+\]\s*$/.test(line)) { addTok(el, doc, line, 'sec'); return; }
+        var eqIdx = line.indexOf('=');
+        if (eqIdx > 0) {
+          addTok(el, doc, line.slice(0, eqIdx), 'key');
+          addTok(el, doc, '=', 'op');
+          var rhs = line.slice(eqIdx + 1);
+          var re = /("(?:\\.|[^"])*"|\b(?:true|false)\b|\b\d+(?:\.\d+)?\b|#.*$|[a-zA-Z_][a-zA-Z0-9_-]*(?=\s*=))/g;
+          var last = 0, m;
+          while ((m = re.exec(rhs)) !== null) {
+            if (m.index > last) addTok(el, doc, rhs.slice(last, m.index), '');
+            var t = m[0];
+            if (t.charAt(0) === '"') addTok(el, doc, t, 'string');
+            else if (t.charAt(0) === '#') addTok(el, doc, t, 'comment');
+            else if (t === 'true' || t === 'false') addTok(el, doc, t, 'kw');
+            else if (/^\d/.test(t)) addTok(el, doc, t, 'num');
+            else addTok(el, doc, t, 'key');
+            last = re.lastIndex;
+          }
+          if (last < rhs.length) addTok(el, doc, rhs.slice(last), '');
+          return;
+        }
+        addTok(el, doc, line, '');
+      }
+
+      function highlightLineMatrix(el, doc, line) {
+        var re = /(\/\/.*$|"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\b(?:public|private|fn|let|const|import|as|from|return|if|elif|else|while|for|in|try|catch|throw|class|new|true|false|null|and|or|not)\b|\b(?:string|int|float|bool|list|map|ok|err|some|none)\b|\b\d+(?:\.\d+)?\b|\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/g;
+        var last = 0, m;
+        while ((m = re.exec(line)) !== null) {
+          if (m.index > last) addTok(el, doc, line.slice(last, m.index), '');
+          var t = m[0];
+          if (t.indexOf('//') === 0) addTok(el, doc, t, 'comment');
+          else if (t.charAt(0) === '"' || t.charAt(0) === "'") addTok(el, doc, t, 'string');
+          else if (/^\d/.test(t)) addTok(el, doc, t, 'num');
+          else if (/^(string|int|float|bool|list|map|ok|err|some|none)$/.test(t)) addTok(el, doc, t, 'cmd');
+          else if (/^(public|private|fn|let|const|import|as|from|return|if|elif|else|while|for|in|try|catch|throw|class|new|true|false|null|and|or|not)$/.test(t)) addTok(el, doc, t, 'kw');
+          else addTok(el, doc, t, 'fn');
+          last = re.lastIndex;
+        }
+        if (last < line.length) addTok(el, doc, line.slice(last), '');
+      }
+
+      function highlightCodeToDom(codeEl, rawText, lang, docObj) {
+        var doc = docObj || document;
+        codeEl.textContent = '';
+        var mode = detectLang(rawText, lang);
+        var lines = String(rawText || '').replace(/\r\n/g, '\n').split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (i > 0) codeEl.appendChild(doc.createTextNode('\n'));
+          if (mode === 'toml') highlightLineToml(codeEl, doc, lines[i]);
+          else if (mode === 'matrix') highlightLineMatrix(codeEl, doc, lines[i]);
+          else highlightLineBash(codeEl, doc, lines[i]);
+        }
+      }
 
       /* ---- Strict DOM-Only Safe Markdown Renderer (textContent only, URL-sanitized) ---- */
       function sanitizeLinkUrl(raw) {
@@ -1117,6 +1215,7 @@ trust_pk = loading...</pre>
 
           // Fenced code block
           if (trimmed.indexOf('```') === 0) {
+            var fenceLang = trimmed.slice(3).trim();
             i += 1;
             var buf = [];
             while (i < lines.length && lines[i].trim().indexOf('```') !== 0) {
@@ -1134,7 +1233,7 @@ trust_pk = loading...</pre>
             if (copyFn) copyFn(copyBtn, (function (c) { return function () { return c; }; })(codeStr));
             var pre = doc.createElement('pre');
             var codeNode = doc.createElement('code');
-            codeNode.textContent = codeStr;
+            highlightCodeToDom(codeNode, codeStr, fenceLang, doc);
             pre.appendChild(codeNode);
             codeWrap.appendChild(copyBtn);
             codeWrap.appendChild(pre);
@@ -1245,7 +1344,11 @@ trust_pk = loading...</pre>
       }
 
       if (typeof module === 'object' && module.exports) {
-        module.exports = { renderMarkdownToDom: renderMarkdownToDom, sanitizeLinkUrl: sanitizeLinkUrl };
+        module.exports = {
+          renderMarkdownToDom: renderMarkdownToDom,
+          sanitizeLinkUrl: sanitizeLinkUrl,
+          highlightCodeToDom: highlightCodeToDom
+        };
       }
       if (typeof window === 'undefined' || !root.document) return;
 
@@ -1266,21 +1369,16 @@ trust_pk = loading...</pre>
         });
       }
 
-      var themeBtn = document.getElementById('themeBtn');
-      if (themeBtn) {
-        themeBtn.addEventListener('click', function () {
-          var el = document.documentElement;
-          var next = el.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-          el.setAttribute('data-theme', next);
-          try { localStorage.setItem('spkg-reg-theme', next); } catch (e) {}
-        });
-      }
-
       document.querySelectorAll('.code-wrap .copy-float').forEach(function (btn) {
         wireCopy(btn, function () {
           var pre = btn.parentElement ? btn.parentElement.querySelector('pre') : null;
           return pre ? (pre.textContent || '') : '';
         });
+      });
+
+      document.querySelectorAll('#homeView pre').forEach(function (pre) {
+        var raw = pre.textContent || '';
+        highlightCodeToDom(pre, raw, '', document);
       });
 
       wireCopy(document.getElementById('copyHeroBtn'), function () {
@@ -1308,7 +1406,7 @@ trust_pk = loading...</pre>
         var pre = document.getElementById('trustIniPre');
         if (!pre) return;
         var pkLine = state.pubKey ? ('trust_pk = ' + state.pubKey) : '# trust_pk = <publish registry.pub first>';
-        pre.textContent = '[packages]\nregistry = ' + state.effectiveHost + '\n' + pkLine;
+        highlightCodeToDom(pre, '[packages]\nregistry = ' + state.effectiveHost + '\n' + pkLine, 'toml', document);
       }
 
       wireCopy(document.getElementById('copyPkBtn'), function () { return state.pubKey; });
@@ -1538,7 +1636,7 @@ trust_pk = loading...</pre>
         });
       });
 
-      function makeCopyCodeBlock(title, subtitle, codeText) {
+      function makeCopyCodeBlock(title, subtitle, codeText, lang) {
         var wrap = document.createElement('div');
         wrap.className = 'install-block';
         if (title) {
@@ -1559,7 +1657,7 @@ trust_pk = loading...</pre>
         btn.textContent = 'Copy';
         wireCopy(btn, function () { return codeText; });
         var pre = document.createElement('pre');
-        var code = docCode(codeText);
+        var code = docCode(codeText, lang);
         pre.appendChild(code);
         cw.appendChild(btn);
         cw.appendChild(pre);
@@ -1567,9 +1665,9 @@ trust_pk = loading...</pre>
         return wrap;
       }
 
-      function docCode(txt) {
+      function docCode(txt, lang) {
         var c = document.createElement('code');
-        c.textContent = txt;
+        highlightCodeToDom(c, txt, lang || '', document);
         return c;
       }
 
@@ -1582,37 +1680,43 @@ trust_pk = loading...</pre>
         container.appendChild(makeCopyCodeBlock(
           '1. Install Latest Release',
           'Downloads, verifies SHA-256 + Ed25519 signature, and vendors into your project:',
-          'spkg install ' + pkg.name
+          'spkg install ' + pkg.name,
+          'bash'
         ));
         container.appendChild(makeCopyCodeBlock(
           '2. Pin Exact Version',
           'Lock the exact SemVer release in spider.toml and spider.lock:',
-          'spkg install ' + pkg.name + '==' + ver
+          'spkg install ' + pkg.name + '==' + ver,
+          'bash'
         ));
         container.appendChild(makeCopyCodeBlock(
           '3. Declare in spider.toml',
           'Add this dependency under [dependencies] and run `spkg install`:',
-          '[dependencies]\n' + pkg.name + ' = { version = "^' + ver + '" }'
+          '[dependencies]\n' + pkg.name + ' = { version = "^' + ver + '" }',
+          'toml'
         ));
         container.appendChild(makeCopyCodeBlock(
           '4. Import in Spid3r (.matrix)',
           'Import the entry module exported by this package:',
-          'import "' + pkg.name + '/' + entryStem + '" as ' + alias + ';'
+          'import "' + pkg.name + '/' + entryStem + '" as ' + alias + ';',
+          'matrix'
         ));
         container.appendChild(makeCopyCodeBlock(
           '5. Verify & Manage',
           'Re-hash vendored files against spider.lock or uninstall:',
-          'spkg verify\nspkg tree\nspkg uninstall ' + pkg.name
+          'spkg verify\nspkg tree\nspkg uninstall ' + pkg.name,
+          'bash'
         ));
         var pk = state.pubKey || '<64-hex-public-key-from-registry.pub>';
         container.appendChild(makeCopyCodeBlock(
           '6. Enforce Registry Ed25519 Verification (spid3r.ini)',
           'Pin this registry URL and public key in your local spid3r.ini:',
-          '[packages]\nregistry = ' + state.effectiveHost + '\ntrust_pk = ' + pk
+          '[packages]\nregistry = ' + state.effectiveHost + '\ntrust_pk = ' + pk,
+          'toml'
         ));
 
-        document.getElementById('sideInstallCmd').textContent = 'spkg install ' + pkg.name;
-        document.getElementById('sideTomlSnippet').textContent = pkg.name + ' = { version = "^' + ver + '" }';
+        highlightCodeToDom(document.getElementById('sideInstallCmd'), 'spkg install ' + pkg.name, 'bash', document);
+        highlightCodeToDom(document.getElementById('sideTomlSnippet'), pkg.name + ' = { version = "^' + ver + '" }', 'toml', document);
       }
 
       wireCopy(document.getElementById('sideCopyInstallBtn'), function () {
@@ -1790,7 +1894,8 @@ trust_pk = loading...</pre>
             manifestPanel.appendChild(makeCopyCodeBlock(
               'spider.toml',
               'Published package manifest for ' + pkg.name + '@' + ver,
-              toml || '# spider.toml unavailable'
+              toml || '# spider.toml unavailable',
+              'toml'
             ));
 
             var safeEntry = entryPath.replace(/^\/+/, '');
@@ -1800,7 +1905,8 @@ trust_pk = loading...</pre>
                 manifestPanel.appendChild(makeCopyCodeBlock(
                   entryPath,
                   'Entry module source',
-                  srcTxt || '// Entry source unavailable'
+                  srcTxt || '// Entry source unavailable',
+                  'matrix'
                 ));
               })
               .catch(function () {});

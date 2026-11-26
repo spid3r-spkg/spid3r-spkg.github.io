@@ -6,8 +6,11 @@ import "lib" as nt;
 import "validate" as val;
 
 fn make_session_token() -> string {
-    let seed = string(unix_ms()) + ":" + string(now_ms()) + ":" + string(random_int(100000, 999999999)) + ":" + string(random_int(100000, 999999999));
-    return sha256(seed).slice(0, 32);
+    let rb = random_bytes(16);
+    if rb.is_err() {
+        throw "OS CSPRNG random_bytes failed: " + string(rb.unwrap_err());
+    }
+    return hex_encode(rb.unwrap());
 }
 
 fn allowed_origin(req: map) -> string {

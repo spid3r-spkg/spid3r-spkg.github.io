@@ -1,0 +1,11 @@
+* text=auto eol=lf
+*.tar binary
+*.png binary
+*.ico binary
+*.sig -text
+*.sha256 -text
+*.txt -text
+*.toml -text
+*.matrix -text
+*.mt -text
+*.pub -text

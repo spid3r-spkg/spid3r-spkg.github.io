@@ -32,22 +32,64 @@ jobs:
                   continue
               parts = line.split("\t")
               status, path = parts[0], parts[1]
-              if path in ("registry.pub", "registry.toml") and status != "A":
+              if path in ("registry.pub", "registry.toml", "registry.toml.sig") and status != "A":
                   sys.exit(f"PR cannot modify or delete {path} ({status})")
               segs = path.split("/")
               if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] != "assets":
                   sys.exit(f"Release immutability violation: PR tried to {status} existing published path {path}")
           print("PR release immutability verified.")
-      - name: Validate packages, hashes, and tar safety
+      - name: Validate packages, hashes, Ed25519 signatures, and tar parity
         shell: python3 {0}
         run: |
-          import hashlib, pathlib, sys, tarfile
+          import hashlib, io, pathlib, re, subprocess, sys, tarfile
+
+          try:
+              from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+          except ImportError:
+              subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "cryptography"])
+              from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
           RESERVED = {"CON", "PRN", "AUX", "NUL"} | {f"COM{i}" for i in range(1, 10)} | {f"LPT{i}" for i in range(1, 10)}
           root = pathlib.Path(".")
+
+          pub_path = root / "registry.pub"
+          if not pub_path.is_file():
+              sys.exit("registry.pub is missing")
+          pub_hex = pub_path.read_text(encoding="utf-8").strip()
+          if not re.fullmatch(r"[0-9a-fA-F]{64}", pub_hex):
+              sys.exit(f"registry.pub must be 64 hex chars, got {pub_hex!r}")
+          pub_key = Ed25519PublicKey.from_public_bytes(bytes.fromhex(pub_hex))
+
+          def verify_sig(data_path: pathlib.Path, required: bool = True) -> None:
+              sig_path = data_path.with_name(data_path.name + ".sig")
+              if not sig_path.is_file():
+                  if required:
+                      sys.exit(f"{data_path}: missing required signature {sig_path.name}")
+                  return
+              sig_hex = sig_path.read_text(encoding="utf-8").strip()
+              if not re.fullmatch(r"[0-9a-fA-F]{128}", sig_hex):
+                  sys.exit(f"{sig_path}: invalid 64-byte hex signature")
+              try:
+                  pub_key.verify(bytes.fromhex(sig_hex), data_path.read_bytes())
+              except Exception as exc:
+                  sys.exit(f"{sig_path}: Ed25519 signature verification failed ({exc})")
+
+          reg_toml_path = root / "registry.toml"
+          if reg_toml_path.is_file():
+              reg_toml_text = reg_toml_path.read_text(encoding="utf-8")
+              m_pk = re.search(r'^public_key\s*=\s*"([^"]+)"', reg_toml_text, re.M)
+              if not m_pk or m_pk.group(1).strip().lower() != pub_hex.lower():
+                  sys.exit("registry.toml public_key does not match registry.pub")
+              verify_sig(reg_toml_path, required=True)
+
           catalog_path = root / "catalog.txt"
           if not catalog_path.is_file():
               sys.exit("catalog.txt is missing")
+          verify_sig(catalog_path, required=True)
+
+          adv_path = root / "advisories.txt"
+          if adv_path.is_file():
+              verify_sig(adv_path, required=True)
 
           skip = {".git", ".github", "assets"}
           pkg_dirs = sorted(
@@ -68,6 +110,62 @@ jobs:
                   h.update(b"\x00")
               return h.hexdigest()
 
+          def manifest_and_tree_digest(manifest_bytes: bytes, sha_hex: str) -> str:
+              h = hashlib.sha256()
+              h.update(b"spid3r-release-v1\x00")
+              h.update(manifest_bytes)
+              h.update(b"\x00")
+              h.update(sha_hex.strip().encode("utf-8"))
+              h.update(b"\x00")
+              return h.hexdigest()
+
+          def manifest_and_wheel_digest(manifest_bytes: bytes, src_sha: str, target: str, native_sha: str) -> str:
+              h = hashlib.sha256()
+              h.update(b"spid3r-wheel-v1\x00")
+              h.update(manifest_bytes)
+              h.update(b"\x00")
+              h.update(src_sha.strip().encode("utf-8"))
+              h.update(b"\x00")
+              h.update(target.strip().encode("utf-8"))
+              h.update(b"\x00")
+              h.update(native_sha.strip().encode("utf-8"))
+              h.update(b"\x00")
+              return h.hexdigest()
+
+          def verify_tar_parity(tar_path: pathlib.Path, expected_files: dict[str, bytes]) -> None:
+              seen_lower = set()
+              actual_files: dict[str, bytes] = {}
+              with tarfile.open(tar_path, "r") as tf:
+                  for member in tf.getmembers():
+                      if member.type in (tarfile.XHDTYPE, tarfile.XGLTYPE, tarfile.GNUTYPE_LONGNAME, tarfile.GNUTYPE_LONGLINK):
+                          sys.exit(f"{tar_path}: unsupported PAX/GNU extended header ({member.name})")
+                      if member.islnk() or member.issym() or ":" in member.name or "\\" in member.name or member.name.startswith("/"):
+                          sys.exit(f"{tar_path}: unsafe member {member.name}")
+                      if not (member.isreg() or member.isdir()):
+                          sys.exit(f"{tar_path}: unsupported member type for {member.name}")
+                      parts = pathlib.PurePosixPath(member.name).parts
+                      if ".." in parts or not parts:
+                          sys.exit(f"{tar_path}: traversal/empty path {member.name}")
+                      for part in parts:
+                          stem = part.split(".")[0].upper()
+                          if stem in RESERVED or part.endswith(".") or part.endswith(" "):
+                              sys.exit(f"{tar_path}: invalid/reserved name {member.name}")
+                      norm = "/".join(parts)
+                      low = norm.lower()
+                      if low in seen_lower:
+                          sys.exit(f"{tar_path}: case-colliding member {member.name}")
+                      seen_lower.add(low)
+                      if member.isreg():
+                          fobj = tf.extractfile(member)
+                          actual_files[norm] = fobj.read() if fobj is not None else b""
+              if set(actual_files.keys()) != set(expected_files.keys()):
+                  extra = sorted(set(actual_files.keys()) - set(expected_files.keys()))
+                  missing = sorted(set(expected_files.keys()) - set(actual_files.keys()))
+                  sys.exit(f"{tar_path}: archive file set mismatch (extra={extra}, missing={missing})")
+              for k, exp_bytes in expected_files.items():
+                  if actual_files[k] != exp_bytes:
+                      sys.exit(f"{tar_path}: archive content mismatch for '{k}' (does not match disk source!)")
+
           catalog_names = set()
           for line in catalog_path.read_text(encoding="utf-8").splitlines():
               s = line.strip()
@@ -82,6 +180,10 @@ jobs:
               idx = pkg / "index.txt"
               if not idx.is_file():
                   sys.exit(f"{pkg}: missing index.txt")
+              verify_sig(idx, required=True)
+              yanked = pkg / "yanked.txt"
+              if yanked.is_file():
+                  verify_sig(yanked, required=True)
               versions = [v.strip() for v in idx.read_text(encoding="utf-8").splitlines() if v.strip() and not v.strip().startswith("#")]
               if not versions:
                   sys.exit(f"{pkg}/index.txt has no versions")
@@ -89,27 +191,49 @@ jobs:
                   sys.exit(f"{pkg.name} missing from catalog.txt")
               for ver in versions:
                   vdir = pkg / ver
-                  for req in ("spider.toml", "sha256.txt", "package.tar"):
+                  for req in ("spider.toml", "sha256.txt", "sha256.txt.sig", "manifest.sha256", "manifest.sha256.sig", "package.tar"):
                       if not (vdir / req).is_file():
                           sys.exit(f"{vdir}: missing {req}")
                   expected = (vdir / "sha256.txt").read_text(encoding="utf-8").strip()
                   actual = tree_hash(vdir / "src")
                   if expected != actual:
                       sys.exit(f"{vdir}: sha256.txt mismatch ({expected} != {actual})")
-                  seen_lower = set()
-                  with tarfile.open(vdir / "package.tar", "r") as tf:
-                      for member in tf.getmembers():
-                          if member.islnk() or member.issym() or ":" in member.name or "\\" in member.name or member.name.startswith("/"):
-                              sys.exit(f"{vdir}/package.tar: unsafe member {member.name}")
-                          parts = pathlib.PurePosixPath(member.name).parts
-                          if ".." in parts:
-                              sys.exit(f"{vdir}/package.tar: traversal path {member.name}")
-                          for part in parts:
-                              stem = part.split(".")[0].upper()
-                              if stem in RESERVED or part.endswith(".") or part.endswith(" "):
-                                  sys.exit(f"{vdir}/package.tar: invalid/reserved name {member.name}")
-                          low = member.name.lower()
-                          if low in seen_lower:
-                              sys.exit(f"{vdir}/package.tar: case-colliding member {member.name}")
-                          seen_lower.add(low)
-          print(f"Verified {len(pkg_dirs)} package(s) successfully.")
+                  verify_sig(vdir / "sha256.txt", required=True)
+
+                  manifest_bytes = (vdir / "spider.toml").read_bytes()
+                  msha_declared = (vdir / "manifest.sha256").read_text(encoding="utf-8").strip()
+                  msha_computed = manifest_and_tree_digest(manifest_bytes, actual)
+                  if msha_declared != msha_computed:
+                      sys.exit(f"{vdir}: manifest.sha256 mismatch ({msha_declared} != {msha_computed})")
+                  verify_sig(vdir / "manifest.sha256", required=True)
+
+                  disk_files = {"spider.toml": manifest_bytes}
+                  for p in sorted((vdir / "src").rglob("*")):
+                      if p.is_file():
+                          disk_files[p.relative_to(vdir).as_posix()] = p.read_bytes()
+                  verify_tar_parity(vdir / "package.tar", disk_files)
+
+                  for wtar in sorted(vdir.glob("package-*.tar")):
+                      target = wtar.name[len("package-"):-len(".tar")]
+                      wsha_path = vdir / f"sha256-{target}.txt"
+                      wmsha_path = vdir / f"manifest-{target}.sha256"
+                      native_dir = vdir / "native" / target
+                      if not wsha_path.is_file() or not wmsha_path.is_file() or not native_dir.is_dir():
+                          sys.exit(f"{vdir}: incomplete wheel artifacts for target '{target}'")
+                      w_expected = wsha_path.read_text(encoding="utf-8").strip()
+                      w_actual = tree_hash(native_dir)
+                      if w_expected != w_actual:
+                          sys.exit(f"{vdir}: sha256-{target}.txt mismatch ({w_expected} != {w_actual})")
+                      verify_sig(wsha_path, required=True)
+                      wm_declared = wmsha_path.read_text(encoding="utf-8").strip()
+                      wm_computed = manifest_and_wheel_digest(manifest_bytes, actual, target, w_actual)
+                      if wm_declared != wm_computed:
+                          sys.exit(f"{vdir}: manifest-{target}.sha256 mismatch")
+                      verify_sig(wmsha_path, required=True)
+                      w_disk_files = dict(disk_files)
+                      for p in sorted(native_dir.rglob("*")):
+                          if p.is_file():
+                              w_disk_files[p.relative_to(vdir).as_posix()] = p.read_bytes()
+                      verify_tar_parity(wtar, w_disk_files)
+
+          print(f"Verified {len(pkg_dirs)} package(s), Ed25519 signatures, and tarball parity successfully.")

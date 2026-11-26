@@ -8,8 +8,12 @@ Official static, Ed25519-signed package registry for [Spid3r](https://github.com
 spkg search
 spkg install <package>
 spkg install <package>==<version>
+spkg tool install <package>   # for packages declaring [bin] CLI executables
 spkg tree
 spkg verify
+spkg audit
+spkg outdated
+spkg freeze --sbom
 spkg uninstall <package>
 ```
 

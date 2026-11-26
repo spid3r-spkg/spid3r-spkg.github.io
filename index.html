@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none';" />
   <title>Spid3r Package Registry (spkg)</title>
   <link rel="icon" type="image/png" href="./assets/spid3r.png" />
   <style>
@@ -615,6 +616,11 @@
       color: var(--amber);
       border-color: rgba(251, 191, 36, 0.35);
     }
+    .sig-badge.err {
+      background: rgba(225, 29, 72, 0.14);
+      color: var(--rose);
+      border-color: rgba(225, 29, 72, 0.4);
+    }
 
     .detail-layout {
       display: grid;
@@ -896,8 +902,12 @@
 <pre>spkg search
 spkg install &lt;package&gt;
 spkg install &lt;package&gt;==&lt;version&gt;
+spkg tool install &lt;package&gt;
 spkg tree
 spkg verify
+spkg audit
+spkg outdated
+spkg freeze --sbom
 spkg uninstall &lt;package&gt;</pre>
           </div>
         </section>
@@ -1135,9 +1145,10 @@ trust_pk = loading...</pre>
       function sanitizeLinkUrl(raw) {
         var s = String(raw || '').trim();
         if (!s) return null;
-        if (s.charAt(0) === '#' || s.indexOf('./') === 0 || s.indexOf('../') === 0) return s;
+        if (s.charAt(0) === '#') return s;
+        if (s.indexOf('./') === 0 && s.indexOf('..') === -1) return s;
         try {
-          var u = new URL(s, 'https://spid3r-spkg.github.io');
+          var u = new URL(s);
           if (u.protocol === 'https:' || u.protocol === 'http:') return s;
         } catch (e) {}
         return null;
@@ -1671,11 +1682,20 @@ trust_pk = loading...</pre>
         return c;
       }
 
-      function renderInstallPanel(pkg, ver, entryPath) {
+      function renderInstallPanel(pkg, ver, entryPath, binNames) {
         var container = document.getElementById('tabPanelInstall');
         container.textContent = '';
         var entryStem = (entryPath || 'src/lib.matrix').replace(/^src\//, '').replace(/\.(matrix|mt)$/i, '');
         var alias = pkg.name.replace(/[^a-zA-Z0-9_]/g, '_');
+
+        if (binNames && binNames.length) {
+          container.appendChild(makeCopyCodeBlock(
+            'CLI Tool Install (Global Executable)',
+            'Declares [bin] (' + binNames.join(', ') + '). Install globally via `spkg tool`:',
+            'spkg tool install ' + pkg.name + '\n' + binNames[0] + ' --help',
+            'bash'
+          ));
+        }
 
         container.appendChild(makeCopyCodeBlock(
           '1. Install Latest Release',
@@ -1702,9 +1722,9 @@ trust_pk = loading...</pre>
           'matrix'
         ));
         container.appendChild(makeCopyCodeBlock(
-          '5. Verify & Manage',
-          'Re-hash vendored files against spider.lock or uninstall:',
-          'spkg verify\nspkg tree\nspkg uninstall ' + pkg.name,
+          '5. Verify, Audit & Manage',
+          'Re-hash vendored files against spider.lock, audit advisories, or uninstall:',
+          'spkg verify\nspkg audit\nspkg tree\nspkg uninstall ' + pkg.name,
           'bash'
         ));
         var pk = state.pubKey || '<64-hex-public-key-from-registry.pub>';
@@ -1800,7 +1820,44 @@ trust_pk = loading...</pre>
           .catch(function () { return fetchFirstAvailable(urls.slice(1)); });
       }
 
+      var loadSeq = 0;
+
+      function hexToBytes(hex) {
+        var clean = String(hex || '').trim();
+        if (!clean || clean.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(clean)) return null;
+        var out = new Uint8Array(clean.length / 2);
+        for (var i = 0; i < out.length; i++) {
+          out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+        }
+        return out;
+      }
+
+      function verifyEd25519Raw(pkHex, msgText, sigHex) {
+        var pk = hexToBytes(pkHex);
+        var sig = hexToBytes(sigHex);
+        if (!pk || pk.length !== 32 || !sig || sig.length !== 64) {
+          return Promise.resolve('invalid');
+        }
+        if (typeof crypto === 'undefined' || !crypto.subtle || typeof TextEncoder === 'undefined') {
+          return Promise.resolve('unsupported');
+        }
+        var msgBytes = new TextEncoder().encode(msgText);
+        return crypto.subtle.importKey('raw', pk, { name: 'Ed25519' }, false, ['verify'])
+          .then(function (key) {
+            return crypto.subtle.verify('Ed25519', key, sig, msgBytes);
+          })
+          .then(function (ok) { return ok ? 'verified' : 'invalid'; })
+          .catch(function () { return 'unsupported'; });
+      }
+
+      function isSafeEntryPath(p) {
+        if (!p || typeof p !== 'string') return false;
+        if (p.charAt(0) === '/' || p.indexOf('..') !== -1 || p.indexOf('\\') !== -1) return false;
+        return /^(?:src\/)?[A-Za-z0-9_.\-\/]+\.(?:matrix|mt)$/.test(p);
+      }
+
       function loadPackageVersion(pkg, ver) {
+        var myLoad = ++loadSeq;
         state.activeVer = ver;
         document.getElementById('detailPkgVer').textContent = 'v' + ver;
         document.getElementById('detailVerSelect').value = ver;
@@ -1819,6 +1876,7 @@ trust_pk = loading...</pre>
           { label: 'spider.toml', href: base + 'spider.toml' },
           { label: 'sha256.txt', href: base + 'sha256.txt' },
           { label: 'sha256.txt.sig', href: base + 'sha256.txt.sig' },
+          { label: 'manifest.sha256', href: base + 'manifest.sha256' },
           { label: 'index.txt', href: './' + encodeURIComponent(pkg.name) + '/index.txt' }
         ].forEach(function (item) {
           var a = document.createElement('a');
@@ -1841,6 +1899,7 @@ trust_pk = loading...</pre>
           './' + encodeURIComponent(pkg.name) + '/README.txt',
           base + 'README.txt'
         ]).then(function (hit) {
+          if (myLoad !== loadSeq) return;
           if (hit && hit.text.trim()) {
             renderMarkdownToDom(readmeEl, hit.text, document, wireCopy);
           } else {
@@ -1866,6 +1925,7 @@ trust_pk = loading...</pre>
         fetch(base + 'spider.toml')
           .then(function (r) { return r.ok ? r.text() : ''; })
           .then(function (toml) {
+            if (myLoad !== loadSeq) return;
             var manifestPanel = document.getElementById('tabPanelManifest');
             manifestPanel.textContent = '';
 
@@ -1889,7 +1949,13 @@ trust_pk = loading...</pre>
             });
             document.getElementById('sideDeps').textContent = depLines.length ? depLines.join(', ') : 'None';
 
-            renderInstallPanel(pkg, ver, entryPath);
+            var binSection = toml.split(/^\[bin\]\s*$/m)[1] || '';
+            binSection = binSection.split(/^\[/m)[0] || '';
+            var binNames = binSection.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(function (l) {
+              return l && l.charAt(0) !== '#' && l.indexOf('=') !== -1;
+            }).map(function (l) { return l.split('=')[0].trim(); }).filter(Boolean);
+
+            renderInstallPanel(pkg, ver, entryPath, binNames);
 
             manifestPanel.appendChild(makeCopyCodeBlock(
               'spider.toml',
@@ -1899,53 +1965,91 @@ trust_pk = loading...</pre>
             ));
 
             var safeEntry = entryPath.replace(/^\/+/, '');
-            fetch(base + safeEntry)
-              .then(function (sr) { return sr.ok ? sr.text() : ''; })
-              .then(function (srcTxt) {
-                manifestPanel.appendChild(makeCopyCodeBlock(
-                  entryPath,
-                  'Entry module source',
-                  srcTxt || '// Entry source unavailable',
-                  'matrix'
-                ));
-              })
-              .catch(function () {});
+            if (isSafeEntryPath(safeEntry)) {
+              fetch(base + safeEntry)
+                .then(function (sr) { return sr.ok ? sr.text() : ''; })
+                .then(function (srcTxt) {
+                  if (myLoad !== loadSeq) return;
+                  manifestPanel.appendChild(makeCopyCodeBlock(
+                    entryPath,
+                    'Entry module source',
+                    srcTxt || '// Entry source unavailable',
+                    'matrix'
+                  ));
+                })
+                .catch(function () {});
+            } else {
+              manifestPanel.appendChild(makeCopyCodeBlock(
+                entryPath,
+                'Entry module source',
+                '// Invalid or unsafe entry path in manifest',
+                'matrix'
+              ));
+            }
           })
           .catch(function () {
-            renderInstallPanel(pkg, ver, state.entryPath);
+            if (myLoad !== loadSeq) return;
+            renderInstallPanel(pkg, ver, state.entryPath, []);
           });
 
-        fetch(base + 'sha256.txt')
-          .then(function (r) { return r.ok ? r.text() : ''; })
-          .then(function (sha) {
-            state.sha256 = (sha || '').trim();
-            document.getElementById('sideSha256').textContent = state.sha256 || 'Missing';
-          })
-          .catch(function () {
-            state.sha256 = '';
-            document.getElementById('sideSha256').textContent = 'Unavailable';
-          });
+        // Verify sha256.txt + sha256.txt.sig cryptographically when WebCrypto Ed25519 is available.
+        var shaPromise = fetch(base + 'sha256.txt').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+        var sigPromise = fetch(base + 'sha256.txt.sig').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+        var yankPromise = fetch('./' + encodeURIComponent(pkg.name) + '/yanked.txt').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
 
-        fetch(base + 'sha256.txt.sig')
-          .then(function (r) { return r.ok ? r.text() : ''; })
-          .then(function (sig) {
-            var ok = (sig || '').trim().length >= 128;
-            document.getElementById('sideSigState').textContent = ok ? 'Ed25519 Signed' : 'Unsigned';
-            var b = document.getElementById('detailSigBadge');
-            b.textContent = ok ? 'Ed25519 Signed' : 'Unsigned';
-            b.className = ok ? 'sig-badge' : 'sig-badge warn';
-          })
-          .catch(function () {
-            document.getElementById('sideSigState').textContent = 'Unsigned';
-            var b = document.getElementById('detailSigBadge');
-            b.textContent = 'Unsigned';
-            b.className = 'sig-badge warn';
+        Promise.all([shaPromise, sigPromise, yankPromise]).then(function (res) {
+          if (myLoad !== loadSeq) return;
+          var shaRaw = res[0] || '';
+          var sigRaw = res[1] || '';
+          var yankTxt = res[2] || '';
+          state.sha256 = shaRaw.trim();
+          document.getElementById('sideSha256').textContent = state.sha256 || 'Missing';
+
+          var yankedSet = {};
+          yankTxt.split(/\r?\n/).forEach(function (l) {
+            var t = l.trim();
+            if (t && t.charAt(0) !== '#') yankedSet[t] = true;
           });
+          var isYanked = !!yankedSet[ver];
+
+          var sigEl = document.getElementById('sideSigState');
+          var badge = document.getElementById('detailSigBadge');
+
+          if (isYanked) {
+            sigEl.textContent = 'YANKED';
+            badge.textContent = 'YANKED (' + ver + ')';
+            badge.className = 'sig-badge err';
+            return;
+          }
+          if (!sigRaw.trim()) {
+            sigEl.textContent = 'Unsigned';
+            badge.textContent = 'Unsigned';
+            badge.className = 'sig-badge warn';
+            return;
+          }
+          verifyEd25519Raw(state.pubKey, shaRaw, sigRaw).then(function (status) {
+            if (myLoad !== loadSeq) return;
+            if (status === 'verified') {
+              sigEl.textContent = 'Ed25519 Verified';
+              badge.textContent = 'Ed25519 Verified';
+              badge.className = 'sig-badge';
+            } else if (status === 'invalid') {
+              sigEl.textContent = 'Signature Invalid!';
+              badge.textContent = 'Signature Invalid!';
+              badge.className = 'sig-badge err';
+            } else {
+              sigEl.textContent = 'Signed (verify via spkg)';
+              badge.textContent = 'Signed (verify via spkg)';
+              badge.className = 'sig-badge warn';
+            }
+          });
+        });
 
         // Refresh versions list from index.txt
         fetch('./' + encodeURIComponent(pkg.name) + '/index.txt')
           .then(function (r) { return r.ok ? r.text() : ''; })
           .then(function (idxTxt) {
+            if (myLoad !== loadSeq) return;
             var list = idxTxt.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(function (s) {
               return s && s.charAt(0) !== '#';
             });
@@ -1953,6 +2057,7 @@ trust_pk = loading...</pre>
             renderVersionsPanel(pkg, ver, versions);
           })
           .catch(function () {
+            if (myLoad !== loadSeq) return;
             renderVersionsPanel(pkg, ver, pkg.versionsList.slice().sort(cmpSemverDesc));
           });
       }

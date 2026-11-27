@@ -1,7 +1,4 @@
 <!doctype html>
-<!-- Restyled per "Crates Utility" design tokens (design-engine-registry / design-system-expert).
-     Data-dense, trust-forward registry. All original JS controller logic, DOM IDs, CSP and
-     behavior contracts preserved. Zero external resources; inline CSS/JS only. -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -10,63 +7,28 @@
   <title>Spid3r Package Registry (spkg)</title>
   <link rel="icon" type="image/png" href="./assets/spid3r.png" />
   <style>
-    /* ============================================================
-       DESIGN TOKENS — "Crates Utility"
-       ============================================================ */
     :root {
-      /* Surfaces */
-      --bg: #FAFBFA;
-      --bg-surface: #FFFFFF;
-      --bg-subtle: #F1F4F2;
-      --bg-inset: #E9EEEB;
-      /* Borders */
-      --border: #DDE4E0;
-      --border-strong: #C4CFC9;
-      --border-focus: #04AA6D;
-      /* Text */
-      --fg: #16211B;
-      --fg-body: #2A362F;
-      --fg-muted: #5C6B63;
-      --fg-faint: #7E8C84;
-      --fg-on-accent: #FFFFFF;
-      /* Accent (#04AA6D heritage — decorative only below AA; use --accent-strong for text) */
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f1f5f9;
+      --bg-code: #0f172a;
+      --bg-chip: rgba(14, 116, 144, 0.09);
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --fg: #0f172a;
+      --fg-secondary: #334155;
+      --fg-muted: #64748b;
       --accent: #04AA6D;
-      --accent-hover: #04945F;
-      --accent-active: #037A50;
-      --accent-strong: #03875A;
-      --accent-tint: #E3F5EC;
-      --accent-tint-strong: #C8ECDB;
-      /* Semantic badges */
-      --ok-bg: #E3F5EC;    --ok-border: #A7E0C6;    --ok-text: #036E48;    --ok-dot: #04AA6D;
-      --warn-bg: #FDF3DC;  --warn-border: #EBD49A;  --warn-text: #7A5200;  --warn-dot: #D99A06;
-      --err-bg: #FDECF0;   --err-border: #F2B8C6;   --err-text: #A61E44;   --err-dot: #D6336C;
-      --info-bg: #E3F3F7;  --info-border: #A9D8E5;  --info-text: #0B6478;  --info-dot: #17A2C6;
-      /* Dark code palette (the only large dark surfaces) */
-      --code-bg: #0D1512;
-      --code-surface: #131E19;
-      --code-border: #233029;
-      --code-fg: #DCE7E1;
-      --code-muted: #7A8C82;
-      --code-green: #4ADE80;
-      --code-cyan: #5BD1E8;
-      --code-amber: #E8C468;
-      --code-rose: #F28BA8;
-      --code-violet: #B7A5F5;
-      /* Spacing (4px base) */
-      --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
-      --sp-5: 20px; --sp-6: 24px; --sp-7: 32px; --sp-8: 48px; --sp-9: 96px;
-      /* Radius */
-      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
-      /* Shadows */
-      --shadow-1: 0 1px 2px rgba(22, 33, 27, 0.06);
-      --shadow-2: 0 2px 8px rgba(22, 33, 27, 0.08), 0 1px 2px rgba(22, 33, 27, 0.05);
-      --shadow-3: 0 8px 24px rgba(22, 33, 27, 0.12);
-      --shadow-code: 0 4px 16px rgba(13, 21, 18, 0.18);
-      /* Typography */
-      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-      /* Motion */
-      --tr-fast: 120ms; --tr-base: 180ms; --tr-slow: 280ms;
+      --accent-hover: #059862;
+      --accent-soft: rgba(4, 170, 109, 0.12);
+      --cyan: #0284c7;
+      --amber: #d97706;
+      --rose: #e11d48;
+      --shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
 
     * { box-sizing: border-box; }
@@ -74,97 +36,49 @@
 
     body {
       margin: 0;
-      font-family: var(--font-ui);
-      font-size: 0.9375rem;
-      background: var(--bg);
-      color: var(--fg-body);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(ellipse 85% 42% at 50% -10%, rgba(4, 170, 109, 0.1), transparent),
+        radial-gradient(ellipse 55% 32% at 88% 4%, rgba(2, 132, 199, 0.07), transparent),
+        var(--bg-base);
+      color: var(--fg);
       line-height: 1.6;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    a { color: var(--accent-strong); text-decoration: none; }
+    a { color: var(--cyan); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    /* Focus ring everywhere — never bare outline:none */
-    a:focus-visible,
     button:focus-visible,
     input:focus-visible,
     select:focus-visible,
-    [tabindex]:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--border-focus);
+    a:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 2px;
     }
 
     code {
-      font-family: var(--font-mono);
-      font-size: 0.875em;
-      background: var(--bg-inset);
-      color: var(--fg);
-      padding: 0.1rem 0.36rem;
-      border-radius: var(--radius-sm);
+      font-family: var(--mono);
+      font-size: 0.87em;
+      background: var(--bg-chip);
+      color: #0369a1;
+      padding: 0.12rem 0.38rem;
+      border-radius: 5px;
     }
-
-    /* ============================================================
-       CODE BLOCKS — dark anchor with chrome bar
-       ============================================================ */
-    .code-wrap {
-      position: relative;
-      background: var(--code-bg);
-      border: 1px solid var(--code-border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-code);
-      overflow: hidden;
-    }
-    .code-chrome {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--sp-2);
-      padding: 6px 8px 6px 14px;
-      background: var(--code-surface);
-      border-bottom: 1px solid var(--code-border);
-    }
-    .code-title {
-      font-family: var(--font-mono);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--code-muted);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .copy-float {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--code-muted);
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: color var(--tr-fast), background var(--tr-fast), border-color var(--tr-fast);
-    }
-    .copy-float:hover { color: var(--code-fg); background: rgba(220, 231, 225, 0.08); }
-    .copy-float.copied { color: var(--code-green); }
-    .copy-float:disabled { opacity: 0.45; cursor: not-allowed; }
-    .copy-float:disabled:hover { color: var(--code-muted); background: transparent; }
 
     pre {
       margin: 0;
-      padding: 14px 16px;
+      background: var(--bg-code);
+      color: #e2e8f0;
+      border: 1px solid #1e293b;
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1rem;
       overflow-x: auto;
-      font-family: var(--font-mono);
-      font-size: 0.8125rem;
-      line-height: 1.6;
-      color: var(--code-fg);
-      background: transparent;
-      border: none;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.55;
     }
     pre code {
       background: transparent;
@@ -173,563 +87,477 @@
       font-size: inherit;
     }
 
-    /* Syntax highlighting tokens — recolored to the --code-* palette */
-    .tok-comment { color: var(--code-muted); font-style: italic; }
-    .tok-string  { color: var(--code-amber); }
-    .tok-kw      { color: var(--code-violet); font-weight: 600; }
-    .tok-cmd     { color: var(--code-green); font-weight: 600; }
-    .tok-flag    { color: var(--code-rose); }
-    .tok-num     { color: var(--code-cyan); }
-    .tok-fn      { color: var(--code-cyan); }
-    .tok-sec     { color: var(--code-amber); font-weight: 700; }
-    .tok-key     { color: var(--code-cyan); }
-    .tok-var     { color: var(--code-rose); }
-    .tok-op      { color: var(--code-muted); }
+    /* Syntax highlighting tokens inside dark terminal <pre> blocks */
+    .tok-comment { color: #64748b; font-style: italic; }
+    .tok-string  { color: #86efac; }
+    .tok-kw      { color: #c084fc; font-weight: 600; }
+    .tok-cmd     { color: #38bdf8; font-weight: 600; }
+    .tok-flag    { color: #fbbf24; }
+    .tok-num     { color: #fb923c; }
+    .tok-fn      { color: #60a5fa; }
+    .tok-sec     { color: #f472b6; font-weight: 700; }
+    .tok-key     { color: #7dd3fc; }
+    .tok-var     { color: #fde047; }
+    .tok-op      { color: #94a3b8; }
 
-    /* ============================================================
-       TOPBAR — 56px sticky, search-first
-       ============================================================ */
+    /* Topbar */
     .topbar {
       position: sticky;
       top: 0;
-      z-index: 100;
-      background: var(--bg-surface);
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
     }
+
     .topbar-inner {
-      max-width: 1120px;
+      max-width: 1220px;
       margin: 0 auto;
-      padding: 0 var(--sp-5);
-      height: 56px;
+      padding: 0.7rem 1.25rem;
       display: flex;
       align-items: center;
-      gap: var(--sp-4);
+      justify-content: space-between;
+      gap: 0.9rem;
+      flex-wrap: wrap;
     }
+
     .brand {
       display: inline-flex;
       align-items: center;
-      gap: var(--sp-2);
+      gap: 0.62rem;
       color: var(--fg);
-      min-width: 0;
-      flex-shrink: 1;
+      font-weight: 700;
+      font-size: 1.04rem;
+      letter-spacing: -0.01em;
     }
     .brand:hover { text-decoration: none; }
-    .brand img { width: 24px; height: 24px; border-radius: 6px; display: block; flex-shrink: 0; }
-    .brand-name {
-      font-family: var(--font-mono);
-      font-size: 0.9375rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .brand img { width: 30px; height: 30px; border-radius: 7px; display: block; }
     .brand-tag {
-      font-family: var(--font-mono);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      padding: 1px 9px;
-      border-radius: var(--radius-pill);
-      background: var(--accent-tint);
-      border: 1px solid var(--accent-tint-strong);
-      color: var(--accent-strong);
-      flex-shrink: 0;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.12rem 0.5rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .top-search {
-      flex: 1 1 auto;
-      max-width: 440px;
-      margin-inline: auto;
+      flex: 1 1 240px;
+      max-width: 360px;
       position: relative;
-      min-width: 0;
     }
     .top-search input {
       width: 100%;
-      padding: 6px 30px 6px 14px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--border);
-      background: var(--bg-subtle);
+      padding: 0.42rem 2.2rem 0.42rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
       color: var(--fg);
-      font-family: var(--font-ui);
-      font-size: 0.875rem;
-      transition: background var(--tr-fast), border-color var(--tr-fast), box-shadow var(--tr-fast);
+      font-size: 0.86rem;
     }
-    .top-search input::placeholder { color: var(--fg-faint); }
-    .top-search input:focus { background: var(--bg-surface); border-color: var(--border-focus); }
     .top-kbd {
       position: absolute;
       right: 0.65rem;
       top: 50%;
       transform: translateY(-50%);
-      font-family: var(--font-mono);
+      font-family: var(--mono);
       font-size: 0.72rem;
-      color: var(--fg-faint);
-      border: 1px solid var(--border);
-      background: var(--bg-surface);
-      border-radius: var(--radius-sm);
-      padding: 0 0.35rem;
+      color: var(--fg-muted);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      padding: 0.02rem 0.35rem;
       pointer-events: none;
     }
 
     .nav-links {
       display: flex;
       align-items: center;
-      gap: var(--sp-1);
-      flex-shrink: 0;
+      gap: 0.35rem;
+      flex-wrap: wrap;
     }
     .nav-link {
       color: var(--fg-muted);
-      font-size: 0.875rem;
+      font-size: 0.87rem;
       font-weight: 600;
-      padding: 6px 10px;
-      border-radius: var(--radius-md);
-      transition: background var(--tr-fast), color var(--tr-fast);
+      padding: 0.36rem 0.68rem;
+      border-radius: var(--radius-sm);
     }
-    .nav-link:hover { background: var(--bg-subtle); color: var(--fg); text-decoration: none; }
+    .nav-link:hover { background: var(--bg-card); color: var(--fg); text-decoration: none; }
 
-    /* ============================================================
-       BUTTONS
-       ============================================================ */
     .btn {
+      background: var(--bg-card);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.42rem 0.82rem;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: var(--bg-surface);
-      color: var(--fg-body);
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-md);
-      padding: 8px 16px;
-      font-family: var(--font-ui);
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background var(--tr-fast), border-color var(--tr-fast), color var(--tr-fast);
+      gap: 0.35rem;
+      transition: border-color 0.14s, background 0.14s;
     }
-    .btn:hover { background: var(--bg-subtle); border-color: var(--border-strong); text-decoration: none; }
-    .btn:active { background: var(--bg-inset); }
-    .btn-primary { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--fg-on-accent); }
+    .btn:hover { background: var(--bg-card-hover); border-color: var(--border-strong); text-decoration: none; }
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
     .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-    .btn-primary:active { background: var(--accent-active); }
-    .btn-ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
-    .btn-ghost:hover { background: var(--bg-subtle); border-color: transparent; color: var(--fg); }
-    .btn-sm { padding: 4px 10px; font-size: 0.8125rem; }
+    .btn-sm { padding: 0.28rem 0.6rem; font-size: 0.76rem; }
 
-    .copy-mini {
-      background: var(--bg-inset);
-      color: var(--fg-body);
-      border: 1px solid var(--border-strong);
-      border-radius: 6px;
-      padding: 3px 10px;
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background var(--tr-fast), color var(--tr-fast), border-color var(--tr-fast);
-    }
-    .copy-mini:hover { background: var(--accent-tint); color: var(--accent-strong); border-color: var(--accent-tint-strong); }
-    .copy-mini.copied { background: var(--accent-tint); color: var(--accent-strong); border-color: var(--accent-tint-strong); }
-
-    /* ============================================================
-       LAYOUT
-       ============================================================ */
     .wrap {
       width: 100%;
-      max-width: 1120px;
+      max-width: 1220px;
       margin: 0 auto;
-      padding: var(--sp-6) var(--sp-5) var(--sp-9);
+      padding: 1.65rem 1.25rem 3.5rem;
       flex: 1 0 auto;
     }
 
     .banner-move {
       display: none;
-      margin-bottom: var(--sp-4);
-      padding: var(--sp-3) var(--sp-4);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--warn-border);
-      background: var(--warn-bg);
-      color: var(--warn-text);
-      font-size: 0.875rem;
+      margin-bottom: 1.25rem;
+      padding: 0.9rem 1.1rem;
+      border-radius: var(--radius);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      border-left: 4px solid var(--amber);
+      background: rgba(251, 191, 36, 0.12);
+      font-size: 0.94rem;
     }
 
-    /* ============================================================
-       HERO — compact, search-first, faint green radial tint only
-       ============================================================ */
+    /* Home Hero */
     .hero {
-      padding: var(--sp-5) 0 0;
-      background: radial-gradient(ellipse 60% 120% at 30% 0%, rgba(227, 245, 236, 0.5), transparent 72%);
+      background: linear-gradient(135deg, rgba(4, 170, 109, 0.15), rgba(56, 189, 248, 0.09));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.2rem 2rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.45rem;
     }
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
-      gap: var(--sp-7);
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
+      gap: 1.5rem;
       align-items: center;
     }
     .eyebrow {
-      margin: 0;
-      font-size: 0.6875rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
       text-transform: uppercase;
-      color: var(--accent-strong);
+      color: var(--accent);
+      margin-bottom: 0.4rem;
     }
     h1 {
-      margin: var(--sp-1) 0 var(--sp-2);
-      font-size: clamp(1.75rem, 3.2vw, 2.5rem);
-      line-height: 1.1;
+      margin: 0 0 0.55rem;
+      font-size: clamp(1.75rem, 3.3vw, 2.5rem);
+      line-height: 1.15;
       letter-spacing: -0.02em;
-      color: var(--fg);
     }
     .hero-lead {
-      margin: 0;
-      color: var(--fg-muted);
-      max-width: 58ch;
-      font-size: 0.9375rem;
+      margin: 0 0 1.25rem;
+      color: var(--fg-secondary);
+      max-width: 62ch;
+      font-size: 1rem;
     }
+    .hero-actions {
+      display: flex;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .hero-terminal {
+      background: var(--bg-code);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .hero-term-head {
+      padding: 0.52rem 0.9rem;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .hero-term-body {
+      padding: 0.9rem 1rem;
+      font-family: var(--mono);
+      font-size: 0.84rem;
+      color: #e2e8f0;
+      line-height: 1.65;
+    }
+    .t-prompt { color: var(--accent); }
+    .t-comment { color: #64748b; }
 
     .search-shell {
       position: relative;
       display: flex;
       align-items: center;
-      margin-top: var(--sp-4);
+      margin-top: 1.35rem;
     }
     .search-input {
       width: 100%;
-      height: 52px;
-      padding: 0 56px 0 18px;
-      border-radius: var(--radius-pill);
+      padding: 0.9rem 4.5rem 0.9rem 1.15rem;
+      border-radius: var(--radius);
       border: 1px solid var(--border-strong);
       background: var(--bg-surface);
       color: var(--fg);
-      font-family: var(--font-ui);
       font-size: 1rem;
-      box-shadow: var(--shadow-1);
-      transition: border-color var(--tr-fast), box-shadow var(--tr-fast);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
     }
-    .search-input::placeholder { color: var(--fg-faint); }
-    .search-input:focus { border-color: var(--border-focus); }
     .kbd-hint {
       position: absolute;
-      right: 18px;
-      top: 50%;
-      transform: translateY(-50%);
-      padding: 2px 9px;
+      right: 0.9rem;
+      padding: 0.18rem 0.52rem;
       border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-subtle);
-      color: var(--fg-faint);
-      font-family: var(--font-mono);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--fg-muted);
+      font-family: var(--mono);
       font-size: 0.78rem;
       pointer-events: none;
     }
 
-    .hero-terminal {
-      background: var(--code-bg);
-      border: 1px solid var(--code-border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-code);
-      overflow: hidden;
-      font-family: var(--font-mono);
-    }
-    .hero-term-head {
-      padding: 7px 12px 7px 14px;
-      background: var(--code-surface);
-      border-bottom: 1px solid var(--code-border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--sp-2);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      color: var(--code-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    .hero-term-head .copy-mini {
-      background: transparent;
-      border-color: var(--code-border);
-      color: var(--code-muted);
-    }
-    .hero-term-head .copy-mini:hover,
-    .hero-term-head .copy-mini.copied {
-      background: rgba(220, 231, 225, 0.08);
-      color: var(--code-green);
-      border-color: var(--code-border);
-    }
-    .hero-term-body {
-      padding: 12px 16px;
-      font-size: 0.8125rem;
-      color: var(--code-fg);
-      line-height: 1.75;
-    }
-    .t-prompt { color: var(--code-muted); }
-    .t-cmd { color: var(--code-green); font-weight: 600; }
-    .t-comment { color: var(--code-muted); font-style: italic; }
-
-    /* KPI strip — mono numerals, micro labels, 1px vertical rules */
+    /* KPI Strip */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      background: var(--bg-subtle);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      margin-top: var(--sp-5);
-      overflow: hidden;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.9rem;
+      margin-bottom: 1.6rem;
     }
     .kpi {
-      padding: var(--sp-3) var(--sp-4);
-      border-left: 1px solid var(--border);
-      min-width: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.95rem 1.1rem;
+      box-shadow: var(--shadow);
     }
-    .kpi:first-child { border-left: 0; }
     .kpi-k {
-      font-size: 0.6875rem;
-      font-weight: 600;
+      font-size: 0.73rem;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--fg-muted);
     }
     .kpi-v {
-      font-family: var(--font-mono);
-      font-size: 1.25rem;
+      font-size: 1.32rem;
       font-weight: 700;
-      color: var(--fg);
-      margin: 2px 0;
-      word-break: break-all;
-      font-variant-numeric: tabular-nums;
+      margin: 0.22rem 0;
+      word-break: break-word;
     }
-    .kpi-v-sm { font-size: 0.9375rem; }
     .kpi-n {
-      font-size: 0.8125rem;
+      font-size: 0.82rem;
       color: var(--fg-muted);
       display: flex;
       align-items: center;
-      gap: var(--sp-2);
+      gap: 0.45rem;
       flex-wrap: wrap;
     }
     .mono-trunc {
-      font-family: var(--font-mono);
-      font-size: 0.8125rem;
-      color: var(--fg-muted);
-      word-break: break-all;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--cyan);
     }
 
-    /* ============================================================
-       TOOLBAR & PACKAGE DIRECTORY
-       ============================================================ */
+    /* Toolbar & Directory */
     .toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--sp-3);
+      gap: 0.9rem;
       flex-wrap: wrap;
-      margin: var(--sp-7) 0 var(--sp-4);
+      margin-bottom: 1rem;
     }
-    .cat-pills { display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
+    .cat-pills { display: flex; align-items: center; gap: 0.42rem; flex-wrap: wrap; }
     .pill {
-      background: var(--bg-surface);
-      color: var(--fg-body);
+      background: var(--bg-card);
+      color: var(--fg-secondary);
       border: 1px solid var(--border);
-      border-radius: var(--radius-pill);
-      padding: 5px 14px;
-      font-family: var(--font-ui);
-      font-size: 0.8125rem;
+      border-radius: 999px;
+      padding: 0.34rem 0.82rem;
+      font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background var(--tr-fast), border-color var(--tr-fast), color var(--tr-fast);
     }
     .pill:hover { border-color: var(--border-strong); color: var(--fg); }
-    .pill.active {
-      background: var(--accent-tint);
-      border-color: var(--accent-tint-strong);
-      color: var(--accent-strong);
-    }
-    .toolbar-selects { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .pill.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+    .toolbar-selects { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
     select {
-      background: var(--bg-surface);
-      color: var(--fg-body);
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-md);
-      padding: 6px 10px;
-      font-family: var(--font-ui);
-      font-size: 0.8125rem;
+      background: var(--bg-card);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.68rem;
+      font-size: 0.84rem;
       font-weight: 600;
-      cursor: pointer;
     }
 
     .catalog-head {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      margin-bottom: var(--sp-3);
-      gap: var(--sp-2);
+      margin-bottom: 0.9rem;
+      gap: 0.5rem;
       flex-wrap: wrap;
     }
-    .catalog-head h2 { margin: 0; font-size: 1.25rem; color: var(--fg); }
-    .result-meta { color: var(--fg-muted); font-family: var(--font-mono); font-size: 0.8125rem; }
+    .catalog-head h2 { margin: 0; font-size: 1.3rem; }
+    .result-meta { color: var(--fg-muted); font-size: 0.88rem; }
 
     .pkg-grid {
       display: flex;
       flex-direction: column;
-      gap: var(--sp-3);
-      margin-bottom: var(--sp-6);
+      gap: 0.9rem;
+      margin-bottom: 2.5rem;
     }
     .pkg-card {
-      background: var(--bg-surface);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-3) var(--sp-4);
-      box-shadow: var(--shadow-1);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.35rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 1rem 1.5rem;
+      align-items: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.13s, border-color 0.15s;
       cursor: pointer;
-      transition: box-shadow var(--tr-base), border-color var(--tr-base);
     }
-    .pkg-card:hover { box-shadow: var(--shadow-2); border-color: var(--border-strong); }
-    .pkg-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-    .pkg-top { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .pkg-card:hover { transform: translateY(-1px); border-color: var(--cyan); }
+    .pkg-main {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      min-width: 0;
+    }
+    .pkg-top { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
     .pkg-name-btn {
       background: none;
       border: none;
       padding: 0;
       color: var(--fg);
-      font-family: var(--font-ui);
-      font-size: 1.0625rem;
+      font-size: 1.22rem;
       font-weight: 700;
       cursor: pointer;
       text-align: left;
     }
-    .pkg-card:hover .pkg-name-btn { color: var(--accent-strong); text-decoration: underline; }
+    .pkg-card:hover .pkg-name-btn { color: var(--cyan); text-decoration: underline; }
     .ver-pill {
-      font-family: var(--font-mono);
+      font-family: var(--mono);
       font-size: 0.78rem;
-      font-weight: 600;
-      padding: 1px 10px;
-      border-radius: var(--radius-pill);
-      background: var(--accent-tint);
-      border: 1px solid var(--accent-tint-strong);
-      color: var(--accent-strong);
+      font-weight: 700;
+      padding: 0.16rem 0.56rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
       white-space: nowrap;
-      font-variant-numeric: tabular-nums;
+    }
+    .pkg-meta-sub {
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+      font-family: var(--mono);
     }
     .pkg-desc {
       margin: 0;
-      color: var(--fg-body);
-      font-size: 0.875rem;
-      line-height: 1.5;
+      color: var(--fg-secondary);
+      font-size: 0.95rem;
+      line-height: 1.55;
       word-break: break-word;
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
-    .pkg-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      font-size: 0.75rem;
-      color: var(--fg-muted);
-    }
-    .pkg-rel { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-    .meta-license { font-family: var(--font-mono); }
-    .chip {
-      font-size: 0.6875rem;
+    .tag-row { display: flex; flex-wrap: wrap; gap: 0.38rem; align-items: center; }
+    .tag {
+      font-size: 0.74rem;
       font-weight: 600;
-      padding: 1px 8px;
-      border-radius: var(--radius-pill);
-      background: var(--accent-tint);
-      color: var(--accent-strong);
+      padding: 0.14rem 0.54rem;
+      border-radius: 999px;
+      background: var(--bg-chip);
+      color: var(--cyan);
     }
-    .chip-inset { background: var(--bg-inset); color: var(--fg-muted); }
+    .tag.target { background: rgba(148, 163, 184, 0.15); color: var(--fg-muted); }
 
-    /* Skeleton loading */
-    .skeleton-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-4);
+    .pkg-foot {
       display: flex;
-      flex-direction: column;
-      gap: var(--sp-2);
-    }
-    .sk {
-      height: 12px;
-      border-radius: var(--radius-sm);
-      background: var(--bg-inset);
-      position: relative;
-      overflow: hidden;
-    }
-    .sk::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      transform: translateX(-100%);
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
-      animation: skShimmer 1.4s ease-in-out infinite;
-    }
-    @keyframes skShimmer { to { transform: translateX(100%); } }
-    .w35 { width: 35%; } .w40 { width: 40%; } .w45 { width: 45%; }
-    .w50 { width: 50%; } .w55 { width: 55%; } .w65 { width: 65%; }
-    .w70 { width: 70%; } .w75 { width: 75%; }
-
-    /* Empty & error states */
-    .empty-state {
-      background: var(--bg-surface);
-      border: 1px dashed var(--border-strong);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-7);
-      text-align: center;
-      color: var(--fg-muted);
-      display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: var(--sp-3);
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
-    .empty-spider {
-      width: 56px;
-      height: 56px;
-      fill: none;
-      stroke: var(--fg-faint);
-      stroke-width: 2.5;
-      stroke-linecap: round;
+    .install-mini {
+      background: var(--bg-code);
+      color: #e2e8f0;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 0.38rem 0.7rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      white-space: nowrap;
     }
-    .empty-title { margin: 0; font-size: 0.9375rem; }
-    .err-panel {
-      background: var(--err-bg);
-      border: 1px solid var(--err-border);
-      color: var(--err-text);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-5);
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: var(--sp-3);
+    .copy-mini {
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--cyan);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
     }
-    .err-panel p { margin: 0; font-size: 0.875rem; }
-    .err-panel code { background: rgba(166, 30, 68, 0.08); color: var(--err-text); }
+    .copy-mini:hover { background: var(--accent); color: #ffffff; border-color: var(--accent); }
 
-    /* Info panels (home) */
+    /* Info Panels */
     .sections-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: var(--sp-4);
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 1.1rem;
     }
     .panel {
-      background: var(--bg-surface);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-5);
-      box-shadow: var(--shadow-1);
-      scroll-margin-top: 72px;
+      border-radius: var(--radius);
+      padding: 1.25rem 1.3rem;
+      box-shadow: var(--shadow);
+      scroll-margin-top: 4.5rem;
     }
-    .panel h3 { margin: 0 0 6px; font-size: 1rem; color: var(--fg); }
-    .panel p { margin: 0 0 var(--sp-3); color: var(--fg-muted); font-size: 0.875rem; }
-    .panel .code-wrap { margin-top: var(--sp-2); }
+    .panel h3 { margin: 0 0 0.45rem; font-size: 1.1rem; }
+    .panel p { margin: 0 0 0.75rem; color: var(--fg-secondary); font-size: 0.91rem; }
 
-    /* ============================================================
-       PACKAGE DETAIL VIEW
-       ============================================================ */
+    .code-wrap { position: relative; margin-top: 0.55rem; }
+    .code-wrap .copy-float {
+      position: absolute;
+      top: 0.45rem;
+      right: 0.45rem;
+      background: rgba(30, 41, 59, 0.9);
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 0.2rem 0.52rem;
+      font-size: 0.73rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .code-wrap .copy-float:hover { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius);
+      padding: 2.2rem;
+      text-align: center;
+      color: var(--fg-muted);
+    }
+
+    /* Package Detail View */
     .detail-view { display: none; }
     .detail-view.active { display: block; }
     .home-view.hidden { display: none; }
@@ -738,70 +566,81 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--sp-3);
+      gap: 0.75rem;
       flex-wrap: wrap;
-      margin-bottom: var(--sp-4);
+      margin-bottom: 1rem;
     }
     .crumb-trail {
-      font-family: var(--font-mono);
-      font-size: 0.8125rem;
+      font-size: 0.88rem;
       color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
     }
 
     .detail-header {
-      background: var(--bg-surface);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-5);
-      box-shadow: var(--shadow-1);
-      margin-bottom: var(--sp-5);
+      border-radius: 14px;
+      padding: 1.4rem 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.25rem;
     }
     .detail-title-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--sp-4);
+      gap: 1rem;
       flex-wrap: wrap;
     }
     .detail-title-left {
       display: flex;
       align-items: center;
-      gap: var(--sp-3);
+      gap: 0.7rem;
       flex-wrap: wrap;
     }
-    .detail-title-left h1 { margin: 0; font-size: 1.75rem; }
-    #detailVerSelect { font-family: var(--font-mono); }
-    .detail-desc-row {
-      margin-top: var(--sp-3);
-      display: flex;
-      flex-direction: column;
-      gap: var(--sp-2);
-      align-items: flex-start;
+    .detail-title-left h1 { margin: 0; font-size: clamp(1.5rem, 2.8vw, 2.05rem); }
+
+    .sig-badge {
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 0.2rem 0.62rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(4, 170, 109, 0.35);
     }
-    .detail-desc-row .pkg-desc { -webkit-line-clamp: unset; margin: 0; }
-    .tag-row { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; }
-    .sha-block { margin-top: var(--sp-3); }
-    .sha-block .kpi-k { display: block; margin-bottom: var(--sp-1); }
-    #sideCopyShaBtn { margin-top: var(--sp-2); }
-    .artifacts-row { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+    .sig-badge.warn {
+      background: rgba(251, 191, 36, 0.14);
+      color: var(--amber);
+      border-color: rgba(251, 191, 36, 0.35);
+    }
+    .sig-badge.err {
+      background: rgba(225, 29, 72, 0.14);
+      color: var(--rose);
+      border-color: rgba(225, 29, 72, 0.4);
+    }
 
     .detail-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 320px;
-      gap: var(--sp-6);
+      grid-template-columns: minmax(0, 1fr) 335px;
+      gap: 1.25rem;
       align-items: start;
     }
+
     .detail-main-card {
-      background: var(--bg-surface);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-1);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
       overflow: hidden;
     }
+
     .detail-tabs {
       display: flex;
-      gap: var(--sp-1);
-      padding: 0 var(--sp-3);
+      gap: 0.25rem;
+      padding: 0.65rem 0.9rem 0;
       border-bottom: 1px solid var(--border);
       background: var(--bg-surface);
       flex-wrap: wrap;
@@ -811,260 +650,128 @@
       color: var(--fg-muted);
       border: none;
       border-bottom: 2px solid transparent;
-      margin-bottom: -1px;
-      padding: 12px 14px;
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
+      padding: 0.55rem 0.9rem;
+      font-size: 0.88rem;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
       cursor: pointer;
-      transition: color var(--tr-fast);
     }
     .dtab-btn:hover { color: var(--fg); }
-    .dtab-btn.active { color: var(--accent-strong); border-bottom-color: var(--accent); }
-    .detail-tab-body { padding: var(--sp-5); }
-    #tabPanelVersions { overflow-x: auto; }
-
-    /* Signature / trust badges — first-class, state never color-only */
-    .sig-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 3px 12px 3px 9px;
-      border-radius: var(--radius-pill);
-      background: var(--ok-bg);
-      border: 1px solid var(--ok-border);
-      color: var(--ok-text);
-      font-family: var(--font-mono);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      width: fit-content;
-    }
-    .sig-badge .sig-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--ok-dot);
-      flex-shrink: 0;
-      animation: sigPulse 2.4s ease-out infinite;
-    }
-    .sig-badge.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
-    .sig-badge.warn .sig-dot { background: var(--warn-dot); animation: none; }
-    .sig-badge.err { background: var(--err-bg); border-color: var(--err-border); color: var(--err-text); }
-    .sig-badge.err .sig-dot { background: var(--err-dot); animation: none; }
-    .sig-badge.info { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
-    .sig-badge.info .sig-dot { background: var(--info-dot); animation: none; }
-    @keyframes sigPulse {
-      0% { box-shadow: 0 0 0 0 rgba(4, 170, 109, 0.30); }
-      70%, 100% { box-shadow: 0 0 0 6px rgba(4, 170, 109, 0); }
+    .dtab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
     }
 
-    /* Markdown typography */
+    .detail-tab-body { padding: 1.35rem 1.45rem; }
+
+    /* Markdown Typography */
     .md-body h1, .md-body h2, .md-body h3, .md-body h4 {
-      margin: var(--sp-5) 0 var(--sp-2);
+      margin: 1.35rem 0 0.55rem;
       line-height: 1.25;
       color: var(--fg);
     }
     .md-body h1:first-child, .md-body h2:first-child { margin-top: 0; }
-    .md-body h1 { font-size: 1.55rem; padding-bottom: var(--sp-1); border-bottom: 1px solid var(--border); }
-    .md-body h2 { font-size: 1.25rem; padding-bottom: var(--sp-1); border-bottom: 1px solid var(--border); }
+    .md-body h1 { font-size: 1.55rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+    .md-body h2 { font-size: 1.25rem; padding-bottom: 0.28rem; border-bottom: 1px solid var(--border); }
     .md-body h3 { font-size: 1.06rem; }
-    .md-body p { margin: 0 0 0.85rem; color: var(--fg-body); }
-    .md-body ul, .md-body ol { margin: 0 0 0.9rem; padding-left: 1.45rem; color: var(--fg-body); }
-    .md-body li { margin-bottom: var(--sp-1); }
+    .md-body p { margin: 0 0 0.85rem; color: var(--fg-secondary); }
+    .md-body ul, .md-body ol { margin: 0 0 0.9rem; padding-left: 1.45rem; color: var(--fg-secondary); }
+    .md-body li { margin-bottom: 0.28rem; }
     .md-body blockquote {
       margin: 0 0 0.95rem;
-      padding: var(--sp-2) var(--sp-4);
+      padding: 0.55rem 1rem;
       border-left: 3px solid var(--accent);
-      background: var(--bg-subtle);
-      color: var(--fg-body);
-      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      background: var(--bg-surface);
+      color: var(--fg-secondary);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
     .md-body hr {
       border: 0;
       border-top: 1px solid var(--border);
-      margin: var(--sp-5) 0;
+      margin: 1.25rem 0;
     }
-    .md-table-wrap { overflow-x: auto; margin: 0 0 var(--sp-4); }
+    .md-table-wrap { overflow-x: auto; margin: 0 0 1rem; }
     .md-body table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.875rem;
-      font-variant-numeric: tabular-nums;
+      font-size: 0.88rem;
     }
     .md-body th, .md-body td {
       text-align: left;
-      padding: var(--sp-2) var(--sp-3);
+      padding: 0.52rem 0.75rem;
       border: 1px solid var(--border);
-      color: var(--fg-body);
+      color: var(--fg-secondary);
     }
-    .md-body th { background: var(--bg-subtle); color: var(--fg); font-weight: 600; }
+    .md-body th { background: var(--bg-surface); color: var(--fg); font-weight: 700; }
+    .md-body .code-wrap { margin: 0 0 1rem; }
 
-    /* Sidebar */
-    .detail-side { display: flex; flex-direction: column; gap: var(--sp-4); }
+    /* Sidebar Cards */
+    .detail-side { display: flex; flex-direction: column; gap: 1rem; }
     .side-card {
-      background: var(--bg-surface);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-4);
-      box-shadow: var(--shadow-1);
+      border-radius: var(--radius);
+      padding: 1.05rem 1.15rem;
+      box-shadow: var(--shadow);
     }
     .side-card h3 {
-      margin: 0 0 var(--sp-3);
-      font-size: 0.6875rem;
-      font-weight: 600;
+      margin: 0 0 0.7rem;
+      font-size: 0.86rem;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--fg-muted);
     }
-    .meta-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .meta-list { display: flex; flex-direction: column; gap: 0.58rem; }
     .meta-row {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      gap: var(--sp-2);
-      font-size: 0.8125rem;
-      padding-bottom: 6px;
+      gap: 0.6rem;
+      font-size: 0.87rem;
+      padding-bottom: 0.45rem;
       border-bottom: 1px solid var(--border);
     }
     .meta-row:last-child { border-bottom: 0; padding-bottom: 0; }
     .meta-row span:first-child { color: var(--fg-muted); }
-    .meta-row strong { color: var(--fg); text-align: right; word-break: break-all; font-weight: 600; }
-    .side-card .code-wrap { margin-top: var(--sp-2); box-shadow: none; }
-    .side-card .code-wrap + .code-wrap { margin-top: var(--sp-2); }
+    .meta-row strong { color: var(--fg); text-align: right; word-break: break-all; }
 
-    .install-block { margin-bottom: var(--sp-5); }
-    .install-block:last-child { margin-bottom: 0; }
-    .install-block .code-wrap { margin-top: var(--sp-2); }
-    .install-sub { margin: 0; font-size: 0.8125rem; color: var(--fg-muted); }
-    .install-block .sig-badge { margin-top: var(--sp-2); }
+    .install-block { margin-bottom: 1.15rem; }
+    .install-block h4 { margin: 0 0 0.35rem; font-size: 0.94rem; }
+    .install-block p { margin: 0 0 0.45rem; font-size: 0.86rem; color: var(--fg-muted); }
 
-    .yank-flag {
-      display: inline-block;
-      margin-left: 6px;
-      padding: 1px 8px;
-      border-radius: var(--radius-pill);
-      background: var(--warn-bg);
-      border: 1px solid var(--warn-border);
-      color: var(--warn-text);
-      font-family: var(--font-mono);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    /* Version table */
-    .ver-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.875rem;
-      font-variant-numeric: tabular-nums;
-    }
-    .ver-table th {
+    .ver-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .ver-table th, .ver-table td {
       text-align: left;
-      padding: var(--sp-2) var(--sp-3);
-      background: var(--bg-subtle);
-      color: var(--fg-muted);
-      font-family: var(--font-ui);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      padding: 0.6rem 0.75rem;
       border-bottom: 1px solid var(--border);
     }
-    .ver-table td {
-      text-align: left;
-      padding: 10px var(--sp-3);
-      border-bottom: 1px solid var(--border);
-      color: var(--fg-body);
-    }
-    .ver-table tbody tr { transition: background var(--tr-fast); }
-    .ver-table tbody tr:hover { background: var(--bg-subtle); }
-    .ver-table tr.is-yanked { background: var(--warn-bg); }
-    .ver-table tr.is-yanked:hover { background: var(--warn-bg); }
-    .ver-table td code { font-size: 0.8125rem; }
-    .ver-table td:last-child { text-align: right; white-space: nowrap; }
+    .ver-table th { color: var(--fg-muted); font-size: 0.76rem; text-transform: uppercase; }
 
-    /* ============================================================
-       FOOTER
-       ============================================================ */
     footer {
-      background: var(--bg-subtle);
-      border-top: 1px solid var(--border);
-      margin-top: auto;
-    }
-    .footer-inner {
-      max-width: 1120px;
+      max-width: 1220px;
+      width: 100%;
       margin: 0 auto;
-      padding: var(--sp-6) var(--sp-5) var(--sp-4);
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--sp-6);
-    }
-    .footer-col h4 {
-      margin: 0 0 var(--sp-2);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      padding: 1.4rem 1.25rem 2.4rem;
+      border-top: 1px solid var(--border);
       color: var(--fg-muted);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
-    .footer-col a, .footer-col span {
-      display: block;
-      font-size: 0.875rem;
-      padding: 2px 0;
-    }
-    .footer-col a { color: var(--ok-text); } /* #036E48 — 6:1 on bg-subtle, WCAG AA */
-    .footer-col span { color: var(--fg-muted); }
-    .footer-legal {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: var(--sp-3) var(--sp-5) var(--sp-6);
-      border-top: 1px solid var(--border);
-      color: var(--fg-muted); /* #5C6B63 — 5.05:1 on bg-subtle, WCAG AA */
-      font-size: 0.75rem;
-    }
-    .footer-legal .mono { font-family: var(--font-mono); }
 
-    /* ============================================================
-       RESPONSIVE — 940 / 780 / 640
-       ============================================================ */
     @media (max-width: 940px) {
       .hero-grid { grid-template-columns: 1fr; }
       .detail-layout { grid-template-columns: 1fr; }
     }
     @media (max-width: 780px) {
-      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .kpi { border-top: 1px solid var(--border); }
-      .kpi:nth-child(-n+2) { border-top: 0; }
-      .kpi:nth-child(3) { border-left: 0; }
-      .brand-tag { display: none; }
-      .detail-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+      .pkg-card { grid-template-columns: 1fr; }
+      .pkg-foot { justify-content: flex-start; padding-top: 0.65rem; border-top: 1px solid var(--border); }
     }
     @media (max-width: 640px) {
-      .topbar-inner { height: auto; flex-wrap: wrap; padding: 10px var(--sp-5); row-gap: var(--sp-2); }
-      .top-search { order: 3; flex-basis: 100%; max-width: none; }
+      .hero { padding: 1.35rem 1.1rem; }
       .kbd-hint, .top-kbd { display: none; }
-      .nav-link { padding: 5px 7px; font-size: 0.8125rem; }
-      .detail-side { grid-template-columns: 1fr; }
-      .footer-inner { grid-template-columns: 1fr; gap: var(--sp-4); }
-      .hero { padding-top: var(--sp-4); }
-    }
-    @media (max-width: 480px) {
-      .nav-link { display: none; }
-      .nav-links .btn { margin-left: auto; }
-    }
-
-    /* Reduced motion: no shimmer, no badge pulse, no smooth scroll */
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      .sk::after { animation: none; display: none; }
-      .sig-badge .sig-dot { animation: none; }
-      * { transition-duration: 0ms !important; }
+      .top-search { order: 3; max-width: 100%; flex-basis: 100%; }
     }
   </style>
 </head>
@@ -1072,21 +779,21 @@
   <header class="topbar">
     <div class="topbar-inner">
       <a class="brand" href="#browse" id="brandHomeLink">
-        <img src="./assets/spid3r.png" alt="Spid3r logo" width="24" height="24" />
-        <span class="brand-name" id="regBrandName">Spid3r Package Registry</span>
-        <span class="brand-tag" aria-hidden="true">spkg</span>
+        <img src="./assets/spid3r.png" alt="Spid3r logo" />
+        <span id="regBrandName">Spid3r Package Registry</span>
+        <span class="brand-tag">spkg</span>
       </a>
 
       <div class="top-search">
-        <input id="topSearchInput" type="search" placeholder="Search packages..." aria-label="Quick search packages" />
-        <span class="top-kbd" aria-hidden="true">/</span>
+        <input id="topSearchInput" type="search" placeholder="Quick jump to package..." aria-label="Quick search packages" />
+        <span class="top-kbd">/</span>
       </div>
 
       <nav class="nav-links" aria-label="Registry navigation">
         <a class="nav-link" href="#browse" id="navPackages">Packages</a>
-        <a class="nav-link" href="#quickstart" id="navQuickstart">Docs</a>
+        <a class="nav-link" href="#quickstart" id="navQuickstart">Get Started</a>
         <a class="nav-link" href="#security" id="navSecurity">Security</a>
-        <a class="btn btn-primary btn-sm" href="#publish" id="navPublish">Publish</a>
+        <a class="nav-link" href="#publish" id="navPublish">Publish</a>
       </nav>
     </div>
   </header>
@@ -1098,55 +805,60 @@
     <div id="homeView" class="home-view">
       <section class="hero">
         <div class="hero-grid">
-          <div class="hero-copy">
-            <p class="eyebrow">Ed25519-Signed · Host-Portable · Zero Install Hooks</p>
+          <div>
+            <div class="eyebrow">Ed25519-Signed · Host-Portable · Zero Install Hooks</div>
             <h1>The Spid3r Package Registry</h1>
             <p class="hero-lead">
               Discover, verify, and install signed <code>.matrix</code> libraries and native bindings with <code>spkg</code>. Every release is SHA-256 tree-hashed, tar-sanitized, and standardized with Markdown documentation.
             </p>
-            <div class="search-shell">
-              <input id="searchInput" class="search-input" type="search" placeholder="Search by name, description, category, target OS, or license..." aria-label="Search packages" />
-              <span class="kbd-hint" aria-hidden="true">/</span>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#browse">Browse All Packages</a>
+              <a class="btn" href="#publish">Publish Your Package</a>
             </div>
           </div>
 
-          <div class="hero-terminal" aria-label="spkg CLI example">
+          <div class="hero-terminal">
             <div class="hero-term-head">
               <span>spkg cli</span>
               <button class="copy-mini" type="button" id="copyHeroBtn">Copy</button>
             </div>
             <div class="hero-term-body">
               <div><span class="t-comment"># Search &amp; install any package</span></div>
-              <div><span class="t-prompt">$</span> <span class="t-cmd">spkg search</span></div>
-              <div><span class="t-prompt">$</span> <span class="t-cmd">spkg install</span> &lt;package&gt;</div>
-              <div><span class="t-prompt">$</span> <span class="t-cmd">spkg verify</span></div>
+              <div><span class="t-prompt">$</span> spkg search</div>
+              <div><span class="t-prompt">$</span> spkg install &lt;package&gt;</div>
+              <div><span class="t-prompt">$</span> spkg verify</div>
             </div>
           </div>
         </div>
 
-        <div class="kpi-grid" role="group" aria-label="Registry telemetry">
-          <div class="kpi">
-            <div class="kpi-k">Published Packages</div>
-            <div class="kpi-v" id="kpiPkgCount">—</div>
-            <div class="kpi-n">Indexed from <code>catalog.txt</code></div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-k">Total Releases</div>
-            <div class="kpi-v" id="kpiVerCount">—</div>
-            <div class="kpi-n">Immutable SemVer archives</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-k">Registry Host</div>
-            <div class="kpi-v kpi-v-sm" id="kpiOrigin">—</div>
-            <div class="kpi-n">Portable via <code>registry.toml</code></div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-k">Ed25519 Public Key</div>
-            <div class="kpi-v kpi-v-sm mono-trunc" id="kpiPubShort">Loading...</div>
-            <div class="kpi-n">
-              <span>From <code>registry.pub</code></span>
-              <button class="copy-mini" type="button" id="copyPkBtn">Copy Key</button>
-            </div>
+        <div class="search-shell">
+          <input id="searchInput" class="search-input" type="search" placeholder="Search all packages by name, description, category, target OS, or license..." aria-label="Search packages" />
+          <span class="kbd-hint">/</span>
+        </div>
+      </section>
+
+      <section class="kpi-grid" aria-label="Registry telemetry">
+        <div class="kpi">
+          <div class="kpi-k">Published Packages</div>
+          <div class="kpi-v" id="kpiPkgCount">—</div>
+          <div class="kpi-n">Indexed dynamically from <code>catalog.txt</code></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-k">Total Releases</div>
+          <div class="kpi-v" id="kpiVerCount">—</div>
+          <div class="kpi-n">Immutable SemVer archives</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-k">Registry Host</div>
+          <div class="kpi-v" id="kpiOrigin" style="font-size: 1rem;">—</div>
+          <div class="kpi-n">Portable via <code>registry.toml</code></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-k">Ed25519 Public Key</div>
+          <div class="kpi-v mono-trunc" id="kpiPubShort">Loading...</div>
+          <div class="kpi-n">
+            <span>From <code>registry.pub</code></span>
+            <button class="copy-mini" type="button" id="copyPkBtn">Copy Key</button>
           </div>
         </div>
       </section>
@@ -1176,10 +888,8 @@
           <span class="result-meta" id="resultMeta">Loading catalog...</span>
         </div>
 
-        <div id="pkgGrid" class="pkg-grid" aria-busy="true">
-          <div class="skeleton-card"><div class="sk w40"></div><div class="sk w70"></div><div class="sk w55"></div></div>
-          <div class="skeleton-card"><div class="sk w35"></div><div class="sk w65"></div><div class="sk w45"></div></div>
-          <div class="skeleton-card"><div class="sk w45"></div><div class="sk w75"></div><div class="sk w50"></div></div>
+        <div id="pkgGrid" class="pkg-grid">
+          <div class="empty-state">Loading package catalog from <code>catalog.txt</code>...</div>
         </div>
       </section>
 
@@ -1188,10 +898,7 @@
           <h3>CLI Quickstart</h3>
           <p>Install, pin, inspect, verify, and remove packages from any project directory.</p>
           <div class="code-wrap">
-            <div class="code-chrome">
-              <span class="code-title">spkg — quickstart</span>
-              <button class="copy-float" type="button">Copy</button>
-            </div>
+            <button class="copy-float" type="button">Copy</button>
 <pre>spkg search
 spkg install &lt;package&gt;
 spkg install &lt;package&gt;==&lt;version&gt;
@@ -1209,10 +916,7 @@ spkg uninstall &lt;package&gt;</pre>
           <h3>Ed25519 Signature Verification</h3>
           <p>Zero install-time hooks, path-traversal tar sanitization, streaming SHA-256 verification, and signed release manifests.</p>
           <div class="code-wrap">
-            <div class="code-chrome">
-              <span class="code-title">spid3r.ini</span>
-              <button class="copy-float" type="button">Copy</button>
-            </div>
+            <button class="copy-float" type="button">Copy</button>
 <pre id="trustIniPre">[packages]
 registry = https://spid3r-spkg.github.io
 trust_pk = loading...</pre>
@@ -1223,10 +927,7 @@ trust_pk = loading...</pre>
           <h3>Publish Standard Packages</h3>
           <p>Publish signed releases with <code>spkg publish</code> and document your package with a plain-text <code>&lt;pkg&gt;/README.md</code>. Raw HTML/JS files inside package folders are blocked by CI.</p>
           <div class="code-wrap">
-            <div class="code-chrome">
-              <span class="code-title">publish.sh</span>
-              <button class="copy-float" type="button">Copy</button>
-            </div>
+            <button class="copy-float" type="button">Copy</button>
 <pre>SPID3R_SIGN_KEY=&lt;64-hex-seed&gt; spkg publish --to-dir ./spid3r-spkg.github.io
 # Add optional docs:
 #   &lt;pkg&gt;/README.md</pre>
@@ -1248,13 +949,11 @@ trust_pk = loading...</pre>
             <h1 id="detailPkgName">package</h1>
             <span class="ver-pill" id="detailPkgVer">v0.0.0</span>
             <select id="detailVerSelect" aria-label="Select package version"></select>
+            <span class="sig-badge" id="detailSigBadge">Checking signature...</span>
           </div>
           <div class="tag-row" id="detailHeaderTags"></div>
         </div>
-        <div class="detail-desc-row">
-          <span class="sig-badge js-sig-badge" id="detailSigBadge" role="status">Checking signature...</span>
-          <p class="pkg-desc" id="detailPkgDesc"></p>
-        </div>
+        <p class="pkg-desc" id="detailPkgDesc" style="margin-top: 0.65rem;"></p>
       </section>
 
       <div class="detail-layout">
@@ -1277,19 +976,12 @@ trust_pk = loading...</pre>
         <aside class="detail-side">
           <div class="side-card">
             <h3>Quick Install</h3>
-            <span class="sig-badge js-sig-badge" id="installSigBadge" role="status">Checking signature...</span>
-            <div class="code-wrap">
-              <div class="code-chrome">
-                <span class="code-title">shell</span>
-                <button class="copy-float" type="button" id="sideCopyInstallBtn" disabled>Copy</button>
-              </div>
+            <div class="code-wrap" style="margin-top: 0;">
+              <button class="copy-float" type="button" id="sideCopyInstallBtn">Copy</button>
               <pre id="sideInstallCmd">spkg install ...</pre>
             </div>
             <div class="code-wrap">
-              <div class="code-chrome">
-                <span class="code-title">spider.toml</span>
-                <button class="copy-float" type="button" id="sideCopyTomlBtn" disabled>Copy</button>
-              </div>
+              <button class="copy-float" type="button" id="sideCopyTomlBtn">Copy</button>
               <pre id="sideTomlSnippet">...</pre>
             </div>
           </div>
@@ -1311,16 +1003,16 @@ trust_pk = loading...</pre>
               <div class="meta-row"><span>Ed25519 Signature</span><strong id="sideSigState">Checking...</strong></div>
               <div class="meta-row"><span>Dependencies</span><strong id="sideDeps">None</strong></div>
             </div>
-            <div class="sha-block">
-              <div class="kpi-k">Tree SHA-256 (<code>sha256.txt</code>)</div>
-              <div class="mono-trunc" id="sideSha256">—</div>
-              <button class="copy-mini" type="button" id="sideCopyShaBtn">Copy SHA-256</button>
+            <div style="margin-top: 0.7rem;">
+              <div class="kpi-k" style="margin-bottom: 0.25rem;">Tree SHA-256 (<code>sha256.txt</code>)</div>
+              <div class="mono-trunc" id="sideSha256" style="word-break: break-all; font-size: 0.78rem;">—</div>
+              <button class="copy-mini" type="button" id="sideCopyShaBtn" style="margin-top: 0.4rem;">Copy SHA-256</button>
             </div>
           </div>
 
           <div class="side-card">
             <h3>Release Artifacts</h3>
-            <div id="sideArtifacts" class="artifacts-row"></div>
+            <div class="tag-row" id="sideArtifacts" style="gap: 0.45rem;"></div>
           </div>
         </aside>
       </div>
@@ -1328,29 +1020,8 @@ trust_pk = loading...</pre>
   </main>
 
   <footer>
-    <div class="footer-inner">
-      <div class="footer-col">
-        <h4>Registry</h4>
-        <a href="./catalog.txt">catalog.txt</a>
-        <a href="./registry.toml">registry.toml</a>
-        <a href="./registry.pub">registry.pub</a>
-      </div>
-      <div class="footer-col">
-        <h4>Security</h4>
-        <a href="#security">Ed25519 signature verification</a>
-        <a href="#quickstart">Verify releases with spkg</a>
-        <span>Zero install-time hooks</span>
-      </div>
-      <div class="footer-col">
-        <h4>Community</h4>
-        <a href="#publish">Publish a package</a>
-        <a href="#browse">Browse all packages</a>
-        <a href="#quickstart">CLI quickstart</a>
-      </div>
-    </div>
-    <div class="footer-legal">
-      Spid3r Package Registry · <span class="mono">Ed25519</span> signatures verified client-side via WebCrypto · Powered by <code>spkg</code> static verifiable artifacts
-    </div>
+    <span>Spid3r Package Registry · Powered by <code>spkg</code> static verifiable artifacts</span>
+    <span>Files: <a href="./catalog.txt">catalog.txt</a> · <a href="./registry.toml">registry.toml</a> · <a href="./registry.pub">registry.pub</a></span>
   </footer>
 
     <script>
@@ -1382,12 +1053,6 @@ trust_pk = loading...</pre>
       }
 
       function highlightLineBash(el, doc, line) {
-        // Render a leading "$ " shell prompt as muted (install snippets)
-        var promptM = line.match(/^\$\s?/);
-        if (promptM) {
-          addTok(el, doc, promptM[0], 'comment');
-          line = line.slice(promptM[0].length);
-        }
         var cIdx = line.indexOf('#');
         var body = cIdx >= 0 ? line.slice(0, cIdx) : line;
         var comment = cIdx >= 0 ? line.slice(cIdx) : '';
@@ -1571,24 +1236,17 @@ trust_pk = loading...</pre>
             if (i < lines.length) i += 1;
             var codeWrap = doc.createElement('div');
             codeWrap.className = 'code-wrap';
-            var chrome = doc.createElement('div');
-            chrome.className = 'code-chrome';
-            var chromeTitle = doc.createElement('span');
-            chromeTitle.className = 'code-title';
-            chromeTitle.textContent = fenceLang || 'code';
-            chrome.appendChild(chromeTitle);
             var copyBtn = doc.createElement('button');
             copyBtn.type = 'button';
             copyBtn.className = 'copy-float';
             copyBtn.textContent = 'Copy';
-            chrome.appendChild(copyBtn);
             var codeStr = buf.join('\n');
             if (copyFn) copyFn(copyBtn, (function (c) { return function () { return c; }; })(codeStr));
             var pre = doc.createElement('pre');
             var codeNode = doc.createElement('code');
             highlightCodeToDom(codeNode, codeStr, fenceLang, doc);
             pre.appendChild(codeNode);
-            codeWrap.appendChild(chrome);
+            codeWrap.appendChild(copyBtn);
             codeWrap.appendChild(pre);
             container.appendChild(codeWrap);
             continue;
@@ -1706,14 +1364,6 @@ trust_pk = loading...</pre>
       if (typeof window === 'undefined' || !root.document) return;
 
       /* ---- UI Controller ---- */
-      // Respect prefers-reduced-motion: 'auto' instead of 'smooth' scrolling.
-      function scrollBehavior() {
-        try {
-          if (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'auto';
-        } catch (e) {}
-        return 'smooth';
-      }
-
       function wireCopy(btn, getter) {
         if (!btn) return;
         btn.addEventListener('click', function (ev) {
@@ -1724,21 +1374,15 @@ trust_pk = loading...</pre>
             navigator.clipboard.writeText(txt).then(function () {
               var old = btn.textContent;
               btn.textContent = 'Copied';
-              btn.classList.add('copied');
-              setTimeout(function () {
-                btn.textContent = old;
-                btn.classList.remove('copied');
-              }, 1300);
+              setTimeout(function () { btn.textContent = old; }, 1300);
             });
           }
         });
       }
 
-      // Chrome-bar code blocks: find the enclosing .code-wrap, then its <pre>.
       document.querySelectorAll('.code-wrap .copy-float').forEach(function (btn) {
         wireCopy(btn, function () {
-          var wrap = btn.closest ? btn.closest('.code-wrap') : btn.parentElement;
-          var pre = wrap ? wrap.querySelector('pre') : null;
+          var pre = btn.parentElement ? btn.parentElement.querySelector('pre') : null;
           return pre ? (pre.textContent || '') : '';
         });
       });
@@ -1766,32 +1410,8 @@ trust_pk = loading...</pre>
         activeVer: '',
         activeDTab: 'readme',
         entryPath: 'src/lib.matrix',
-        sha256: '',
-        yankedSet: {},
-        lastVersionsArgs: null,
-        sigStatus: { cls: 'info', text: 'Checking signature...' }
+        sha256: ''
       };
-
-      /* ---- Signature / trust badges (first-class; state never color-only) ---- */
-      function applySigBadges() {
-        var st = state.sigStatus || { cls: 'info', text: 'Checking signature...' };
-        document.querySelectorAll('.js-sig-badge').forEach(function (b) {
-          b.className = ('sig-badge js-sig-badge ' + st.cls).trim();
-          b.textContent = '';
-          var dot = document.createElement('span');
-          dot.className = 'sig-dot';
-          dot.setAttribute('aria-hidden', 'true');
-          b.appendChild(dot);
-          b.appendChild(document.createTextNode(st.text));
-          b.setAttribute('role', 'status');
-          b.setAttribute('aria-label', 'Signature status: ' + st.text);
-        });
-      }
-      function setSigStatus(cls, text) {
-        state.sigStatus = { cls: cls || '', text: text };
-        applySigBadges();
-      }
-      applySigBadges();
 
       function updateTrustIni() {
         var pre = document.getElementById('trustIniPre');
@@ -1849,47 +1469,6 @@ trust_pk = loading...</pre>
         return 0;
       }
 
-      /* ---- Empty state: ghost spider outline + clear-filters action ---- */
-      function buildEmptyState(message) {
-        var box = document.createElement('div');
-        box.className = 'empty-state';
-        var NS = 'http://www.w3.org/2000/svg';
-        var svg = document.createElementNS(NS, 'svg');
-        svg.setAttribute('class', 'empty-spider');
-        svg.setAttribute('viewBox', '0 0 64 64');
-        svg.setAttribute('aria-hidden', 'true');
-        var bodyC = document.createElementNS(NS, 'circle');
-        bodyC.setAttribute('cx', '32'); bodyC.setAttribute('cy', '36'); bodyC.setAttribute('r', '9');
-        var headC = document.createElementNS(NS, 'circle');
-        headC.setAttribute('cx', '32'); headC.setAttribute('cy', '23'); headC.setAttribute('r', '5');
-        var legs = document.createElementNS(NS, 'path');
-        legs.setAttribute('d', 'M24 30 C14 26 10 18 9 10 M23 34 C12 32 6 28 4 20 M23 40 C14 42 8 48 6 54 M27 44 C21 50 19 56 19 61 M40 30 C50 26 54 18 55 10 M41 34 C52 32 58 28 60 20 M41 40 C50 42 56 48 58 54 M37 44 C43 50 45 56 45 61');
-        svg.appendChild(bodyC);
-        svg.appendChild(headC);
-        svg.appendChild(legs);
-        box.appendChild(svg);
-        var h = document.createElement('p');
-        h.className = 'empty-title';
-        h.textContent = message;
-        box.appendChild(h);
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-ghost';
-        btn.textContent = 'Clear filters';
-        btn.addEventListener('click', function () {
-          document.getElementById('searchInput').value = '';
-          document.getElementById('topSearchInput').value = '';
-          document.getElementById('targetSelect').value = '';
-          state.activeCat = '';
-          document.querySelectorAll('#catBar .pill').forEach(function (x) {
-            x.classList.toggle('active', !(x.getAttribute('data-cat') || ''));
-          });
-          renderCatalog();
-        });
-        box.appendChild(btn);
-        return box;
-      }
-
       function renderCatalog() {
         var q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
         var cat = state.activeCat.toLowerCase();
@@ -1921,11 +1500,13 @@ trust_pk = loading...</pre>
 
         document.getElementById('resultMeta').textContent = 'Showing ' + filtered.length + ' of ' + state.packages.length + ' package(s)';
         var grid = document.getElementById('pkgGrid');
-        grid.removeAttribute('aria-busy');
         grid.textContent = '';
 
         if (!filtered.length) {
-          grid.appendChild(buildEmptyState('No packages match your current filters.'));
+          var empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.textContent = 'No packages match your current filters.';
+          grid.appendChild(empty);
           return;
         }
 
@@ -1934,8 +1515,8 @@ trust_pk = loading...</pre>
           card.className = 'pkg-card';
           card.addEventListener('click', function () { openPackageView(pkg, pkg.latest); });
 
-          var main = document.createElement('div');
-          main.className = 'pkg-main';
+          var mainCol = document.createElement('div');
+          mainCol.className = 'pkg-main';
 
           var top = document.createElement('div');
           top.className = 'pkg-top';
@@ -1953,41 +1534,70 @@ trust_pk = loading...</pre>
           top.appendChild(nameBtn);
           top.appendChild(ver);
 
+          if (pkg.license) {
+            var licPill = document.createElement('span');
+            licPill.className = 'tag target';
+            licPill.textContent = pkg.license;
+            top.appendChild(licPill);
+          }
+
+          var relMeta = document.createElement('span');
+          relMeta.className = 'pkg-meta-sub';
+          var verCount = pkg.versionsList.length || 1;
+          relMeta.textContent = verCount + (verCount === 1 ? ' release' : ' releases') + (pkg.versionsList.length ? ' (' + pkg.versionsList.join(', ') + ')' : '');
+          top.appendChild(relMeta);
+
           var desc = document.createElement('p');
           desc.className = 'pkg-desc';
           desc.textContent = pkg.desc || 'Spid3r package';
-          desc.title = pkg.desc || '';
 
-          var meta = document.createElement('div');
-          meta.className = 'pkg-meta';
-          var verCount = pkg.versionsList.length || 1;
-          var rel = document.createElement('span');
-          rel.className = 'pkg-rel';
-          rel.textContent = verCount + (verCount === 1 ? ' release' : ' releases');
-          meta.appendChild(rel);
-          if (pkg.license) {
-            var lic = document.createElement('span');
-            lic.className = 'meta-license';
-            lic.textContent = pkg.license;
-            meta.appendChild(lic);
-          }
+          var tagRow = document.createElement('div');
+          tagRow.className = 'tag-row';
           pkg.categories.forEach(function (c) {
-            var s = document.createElement('span');
-            s.className = 'chip';
-            s.textContent = c;
-            meta.appendChild(s);
+            var span = document.createElement('span');
+            span.className = 'tag';
+            span.textContent = c;
+            tagRow.appendChild(span);
           });
           pkg.targets.forEach(function (t) {
-            var s = document.createElement('span');
-            s.className = 'chip chip-inset';
-            s.textContent = t;
-            meta.appendChild(s);
+            var span = document.createElement('span');
+            span.className = 'tag target';
+            span.textContent = t;
+            tagRow.appendChild(span);
           });
 
-          main.appendChild(top);
-          main.appendChild(desc);
-          main.appendChild(meta);
-          card.appendChild(main);
+          mainCol.appendChild(top);
+          mainCol.appendChild(desc);
+          if (tagRow.childNodes.length) mainCol.appendChild(tagRow);
+
+          var foot = document.createElement('div');
+          foot.className = 'pkg-foot';
+          var cmdText = 'spkg install ' + pkg.name;
+          var cmdBox = document.createElement('div');
+          cmdBox.className = 'install-mini';
+          cmdBox.textContent = cmdText;
+
+          var copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.className = 'copy-mini';
+          copyBtn.textContent = 'Copy';
+          wireCopy(copyBtn, function () { return cmdText; });
+
+          var infoBtn = document.createElement('button');
+          infoBtn.type = 'button';
+          infoBtn.className = 'btn btn-primary btn-sm';
+          infoBtn.textContent = 'Info & Install';
+          infoBtn.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            openPackageView(pkg, pkg.latest);
+          });
+
+          foot.appendChild(cmdBox);
+          foot.appendChild(copyBtn);
+          foot.appendChild(infoBtn);
+
+          card.appendChild(mainCol);
+          card.appendChild(foot);
           grid.appendChild(card);
         });
       }
@@ -2037,49 +1647,32 @@ trust_pk = loading...</pre>
         });
       });
 
-      /* Code block with chrome bar (title + copy) and, for install commands,
-         a live signature badge rendered beside the command. */
       function makeCopyCodeBlock(title, subtitle, codeText, lang) {
         var wrap = document.createElement('div');
         wrap.className = 'install-block';
+        if (title) {
+          var h4 = document.createElement('h4');
+          h4.textContent = title;
+          wrap.appendChild(h4);
+        }
         if (subtitle) {
           var p = document.createElement('p');
-          p.className = 'install-sub';
           p.textContent = subtitle;
           wrap.appendChild(p);
         }
-        var mode = detectLang(codeText, lang);
-        var showSig = mode === 'bash' && /(^|\n)\s*spkg (tool )?install/.test(codeText);
-        var display = mode === 'bash'
-          ? codeText.split('\n').map(function (l) { return l ? '$ ' + l : l; }).join('\n')
-          : codeText;
         var cw = document.createElement('div');
         cw.className = 'code-wrap';
-        var chrome = document.createElement('div');
-        chrome.className = 'code-chrome';
-        var ct = document.createElement('span');
-        ct.className = 'code-title';
-        ct.textContent = title || lang || 'shell';
-        chrome.appendChild(ct);
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'copy-float';
         btn.textContent = 'Copy';
         wireCopy(btn, function () { return codeText; });
-        chrome.appendChild(btn);
         var pre = document.createElement('pre');
-        var code = docCode(display, mode);
+        var code = docCode(codeText, lang);
         pre.appendChild(code);
-        cw.appendChild(chrome);
+        cw.appendChild(btn);
         cw.appendChild(pre);
         wrap.appendChild(cw);
-        if (showSig) {
-          var badge = document.createElement('span');
-          badge.className = 'sig-badge js-sig-badge';
-          badge.setAttribute('role', 'status');
-          wrap.appendChild(badge);
-          applySigBadges();
-        }
         return wrap;
       }
 
@@ -2091,9 +1684,6 @@ trust_pk = loading...</pre>
 
       function renderInstallPanel(pkg, ver, entryPath, binNames) {
         var container = document.getElementById('tabPanelInstall');
-        // Real package data is loaded — enable the sidebar copy buttons.
-        document.getElementById('sideCopyInstallBtn').disabled = false;
-        document.getElementById('sideCopyTomlBtn').disabled = false;
         container.textContent = '';
         var entryStem = (entryPath || 'src/lib.matrix').replace(/^src\//, '').replace(/\.(matrix|mt)$/i, '');
         var alias = pkg.name.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -2145,12 +1735,12 @@ trust_pk = loading...</pre>
           'toml'
         ));
 
-        highlightCodeToDom(document.getElementById('sideInstallCmd'), '$ spkg install ' + pkg.name, 'bash', document);
+        highlightCodeToDom(document.getElementById('sideInstallCmd'), 'spkg install ' + pkg.name, 'bash', document);
         highlightCodeToDom(document.getElementById('sideTomlSnippet'), pkg.name + ' = { version = "^' + ver + '" }', 'toml', document);
       }
 
       wireCopy(document.getElementById('sideCopyInstallBtn'), function () {
-        return document.getElementById('sideInstallCmd').textContent.replace(/^\$\s?/gm, '');
+        return document.getElementById('sideInstallCmd').textContent;
       });
       wireCopy(document.getElementById('sideCopyTomlBtn'), function () {
         return document.getElementById('sideTomlSnippet').textContent;
@@ -2160,7 +1750,6 @@ trust_pk = loading...</pre>
       });
 
       function renderVersionsPanel(pkg, activeVer, versions) {
-        state.lastVersionsArgs = { pkg: pkg, ver: activeVer, versions: versions };
         var container = document.getElementById('tabPanelVersions');
         container.textContent = '';
         var tbl = document.createElement('table');
@@ -2177,21 +1766,12 @@ trust_pk = loading...</pre>
 
         var tbody = document.createElement('tbody');
         versions.forEach(function (v) {
-          var isYanked = !!(state.yankedSet && state.yankedSet[v]);
           var tr = document.createElement('tr');
-          if (isYanked) tr.className = 'is-yanked';
-
           var tdV = document.createElement('td');
           var pill = document.createElement('span');
           pill.className = 'ver-pill';
           pill.textContent = 'v' + v + (v === pkg.latest ? ' (latest)' : '');
           tdV.appendChild(pill);
-          if (isYanked) {
-            var yb = document.createElement('span');
-            yb.className = 'yank-flag';
-            yb.textContent = 'Yanked';
-            tdV.appendChild(yb);
-          }
 
           var tdCmd = document.createElement('td');
           var c = document.createElement('code');
@@ -2279,15 +1859,14 @@ trust_pk = loading...</pre>
       function loadPackageVersion(pkg, ver) {
         var myLoad = ++loadSeq;
         state.activeVer = ver;
-        state.yankedSet = {};
-        state.lastVersionsArgs = null;
         document.getElementById('detailPkgVer').textContent = 'v' + ver;
         document.getElementById('detailVerSelect').value = ver;
         document.getElementById('detailBreadcrumb').textContent = 'Packages / ' + pkg.name + ' / v' + ver;
         document.getElementById('sideVer').textContent = 'v' + ver;
         document.getElementById('sideSha256').textContent = 'Loading...';
         document.getElementById('sideSigState').textContent = 'Checking...';
-        setSigStatus('info', 'Checking signature...');
+        document.getElementById('detailSigBadge').textContent = 'Checking signature...';
+        document.getElementById('detailSigBadge').className = 'sig-badge';
 
         var base = './' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(ver) + '/';
         var artWrap = document.getElementById('sideArtifacts');
@@ -2431,37 +2010,37 @@ trust_pk = loading...</pre>
             var t = l.trim();
             if (t && t.charAt(0) !== '#') yankedSet[t] = true;
           });
-          state.yankedSet = yankedSet;
           var isYanked = !!yankedSet[ver];
 
-          // Re-render versions table so yanked rows get amber styling.
-          if (state.lastVersionsArgs) {
-            renderVersionsPanel(state.lastVersionsArgs.pkg, state.lastVersionsArgs.ver, state.lastVersionsArgs.versions);
-          }
-
           var sigEl = document.getElementById('sideSigState');
+          var badge = document.getElementById('detailSigBadge');
 
           if (isYanked) {
             sigEl.textContent = 'YANKED';
-            setSigStatus('err', 'YANKED (' + ver + ')');
+            badge.textContent = 'YANKED (' + ver + ')';
+            badge.className = 'sig-badge err';
             return;
           }
           if (!sigRaw.trim()) {
             sigEl.textContent = 'Unsigned';
-            setSigStatus('warn', 'Unsigned');
+            badge.textContent = 'Unsigned';
+            badge.className = 'sig-badge warn';
             return;
           }
           verifyEd25519Raw(state.pubKey, shaRaw, sigRaw).then(function (status) {
             if (myLoad !== loadSeq) return;
             if (status === 'verified') {
               sigEl.textContent = 'Ed25519 Verified';
-              setSigStatus('', 'Ed25519 Verified');
+              badge.textContent = 'Ed25519 Verified';
+              badge.className = 'sig-badge';
             } else if (status === 'invalid') {
               sigEl.textContent = 'Signature Invalid!';
-              setSigStatus('err', 'Signature Invalid!');
+              badge.textContent = 'Signature Invalid!';
+              badge.className = 'sig-badge err';
             } else {
               sigEl.textContent = 'Signed (verify via spkg)';
-              setSigStatus('warn', 'Signed (verify via spkg)');
+              badge.textContent = 'Signed (verify via spkg)';
+              badge.className = 'sig-badge warn';
             }
           });
         });
@@ -2494,13 +2073,13 @@ trust_pk = loading...</pre>
         tagsWrap.textContent = '';
         pkg.categories.forEach(function (c) {
           var s = document.createElement('span');
-          s.className = 'chip';
+          s.className = 'tag';
           s.textContent = c;
           tagsWrap.appendChild(s);
         });
         pkg.targets.forEach(function (t) {
           var s = document.createElement('span');
-          s.className = 'chip chip-inset';
+          s.className = 'tag target';
           s.textContent = t;
           tagsWrap.appendChild(s);
         });
@@ -2517,7 +2096,7 @@ trust_pk = loading...</pre>
 
         setDetailTab('readme');
         loadPackageVersion(pkg, ver || pkg.latest);
-        window.scrollTo({ top: 0, behavior: scrollBehavior() });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
       function showHomeView(anchorId) {
@@ -2527,7 +2106,7 @@ trust_pk = loading...</pre>
         try { window.history.replaceState(null, '', anchorId ? ('#' + anchorId) : '#browse'); } catch (e) {}
         if (anchorId) {
           var target = document.getElementById(anchorId);
-          if (target) target.scrollIntoView({ behavior: scrollBehavior() });
+          if (target) target.scrollIntoView({ behavior: 'smooth' });
         }
       }
 
@@ -2591,61 +2170,46 @@ trust_pk = loading...</pre>
       }
       window.addEventListener('hashchange', parseHashAndRoute);
 
-      function loadCatalog() {
-        fetch('./catalog.txt')
-          .then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.text();
-          })
-          .then(function (text) {
-            var totalReleases = 0;
-            state.packages = text.split(/\r?\n/).filter(function (line) {
-              var t = line.trim();
-              return t && t.charAt(0) !== '#';
-            }).map(function (line) {
-              var cols = line.split('\t');
-              var vers = (cols[2] || cols[1] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-              totalReleases += vers.length || 1;
-              return {
-                name: (cols[0] || '').trim(),
-                latest: (cols[1] || '').trim(),
-                versionsList: vers,
-                desc: (cols[3] || '').trim(),
-                categories: (cols[4] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
-                targets: (cols[5] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
-                license: (cols[6] || '').trim()
-              };
-            }).filter(function (p) { return !!p.name; });
+      fetch('./catalog.txt')
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function (text) {
+          var totalReleases = 0;
+          state.packages = text.split(/\r?\n/).filter(function (line) {
+            var t = line.trim();
+            return t && t.charAt(0) !== '#';
+          }).map(function (line) {
+            var cols = line.split('\t');
+            var vers = (cols[2] || cols[1] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+            totalReleases += vers.length || 1;
+            return {
+              name: (cols[0] || '').trim(),
+              latest: (cols[1] || '').trim(),
+              versionsList: vers,
+              desc: (cols[3] || '').trim(),
+              categories: (cols[4] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+              targets: (cols[5] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+              license: (cols[6] || '').trim()
+            };
+          }).filter(function (p) { return !!p.name; });
 
-            document.getElementById('kpiPkgCount').textContent = String(state.packages.length);
-            document.getElementById('kpiVerCount').textContent = String(totalReleases);
-            syncCategoryPills();
-            renderCatalog();
-            parseHashAndRoute();
-          })
-          .catch(function () {
-            document.getElementById('resultMeta').textContent = 'Catalog unavailable';
-            var grid = document.getElementById('pkgGrid');
-            grid.removeAttribute('aria-busy');
-            grid.textContent = '';
-            var errBox = document.createElement('div');
-            errBox.className = 'err-panel';
-            var p = document.createElement('p');
-            var c = document.createElement('code');
-            c.textContent = 'catalog.txt';
-            p.appendChild(c);
-            p.appendChild(document.createTextNode(' could not be loaded. Serve this repository over HTTP(S) (e.g. GitHub Pages) and retry.'));
-            errBox.appendChild(p);
-            var retry = document.createElement('button');
-            retry.type = 'button';
-            retry.className = 'btn';
-            retry.textContent = 'Retry';
-            retry.addEventListener('click', loadCatalog);
-            errBox.appendChild(retry);
-            grid.appendChild(errBox);
-          });
-      }
-      loadCatalog();
+          document.getElementById('kpiPkgCount').textContent = String(state.packages.length);
+          document.getElementById('kpiVerCount').textContent = String(totalReleases);
+          syncCategoryPills();
+          renderCatalog();
+          parseHashAndRoute();
+        })
+        .catch(function () {
+          document.getElementById('resultMeta').textContent = 'Catalog unavailable';
+          var grid = document.getElementById('pkgGrid');
+          grid.textContent = '';
+          var errBox = document.createElement('div');
+          errBox.className = 'empty-state';
+          errBox.textContent = 'Unable to load catalog.txt (serve this repository over HTTP(S) or GitHub Pages).';
+          grid.appendChild(errBox);
+        });
     })(typeof globalThis !== 'undefined' ? globalThis : this);
   </script>
 </body>

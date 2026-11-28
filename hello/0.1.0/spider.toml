@@ -1,5 +1,0 @@
-[package]
-name = "hello"
-version = "0.1.0"
-entry = "src/lib.matrix"
-description = "Starter greeting package for Spid3r"

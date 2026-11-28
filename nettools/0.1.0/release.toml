@@ -1,8 +1,0 @@
-name = "nettools"
-version = "0.1.0"
-tarball_url = "https://github.com/spid3r-spkg/spid3r-spkg.github.io/releases/download/nettools-0.1.0/package.tar"
-tarball_sha256 = "38c3aa51860fc220ef7d0c44a3a471e28a715f6a905e9149632627130be2e163"
-source_repo = "https://github.com/needyamin/nettools"
-source_tag = "v0.1.0"
-published_by = "needyamin"
-published_at = "2026-11-28T09:52:52Z"

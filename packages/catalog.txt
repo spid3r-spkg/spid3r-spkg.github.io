@@ -1,0 +1,2 @@
+# Spid3r Package Registry Catalog
+# name	latest	versions	description	categories	targets	license

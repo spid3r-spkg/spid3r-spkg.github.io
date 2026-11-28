@@ -132,6 +132,7 @@ jobs:
             --tag "${{ steps.req.outputs.tag }}" \
             --actor "${{ steps.req.outputs.actor }}" \
             --subdir "${{ steps.req.outputs.subdir }}" \
+            --registry-root packages \
             --registry-repo "${{ github.repository }}" \
             --tarball-url "${{ steps.req.outputs.tarball_url }}" \
             --out-tarball /tmp/spkg-out/package.tar \
@@ -161,7 +162,7 @@ jobs:
         run: |
           git config user.name "spid3r-spkg-bot"
           git config user.email "spid3r-spkg-bot@users.noreply.github.com"
-          git add "${{ steps.build.outputs.name }}" catalog.txt catalog.txt.sig
+          git add "packages/${{ steps.build.outputs.name }}" packages/catalog.txt packages/catalog.txt.sig
           git commit -m "Publish ${{ steps.build.outputs.name }}@${{ steps.build.outputs.version }} (thin index)"
           git push origin HEAD:main
 

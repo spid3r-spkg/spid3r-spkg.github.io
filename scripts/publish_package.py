@@ -316,7 +316,7 @@ def main() -> None:
     ap.add_argument("--tag", required=True, help="Git tag to publish (e.g. v0.1.0)")
     ap.add_argument("--actor", required=True, help="GitHub username requesting publish")
     ap.add_argument("--subdir", default="", help="Optional subdirectory containing spider.toml")
-    ap.add_argument("--registry-root", default=".", help="Path to spid3r-spkg.github.io root")
+    ap.add_argument("--registry-root", default="packages", help="Path to registry index root (default: packages)")
     ap.add_argument(
         "--registry-repo",
         default="spid3r-spkg/spid3r-spkg.github.io",

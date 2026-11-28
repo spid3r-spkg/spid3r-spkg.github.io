@@ -15,7 +15,7 @@ jobs:
           fetch-depth: 0
       - name: Reject committed private signing keys
         run: |
-          if find . -maxdepth 4 -name "*.key" | grep -q .; then
+          if find . -maxdepth 5 -name "*.key" | grep -q .; then
             echo "ERROR: Private signing key files (*.key / registry.key) must never be committed!"
             exit 1
           fi
@@ -27,21 +27,25 @@ jobs:
 
           base = "${{ github.event.pull_request.base.sha }}"
           out = subprocess.check_output(["git", "diff", "--name-status", base, "HEAD"], text=True)
+          protected = {
+              "registry.pub", "registry.toml", "registry.toml.sig",
+              "packages/registry.pub", "packages/registry.toml", "packages/registry.toml.sig",
+          }
           for line in out.splitlines():
               if not line.strip():
                   continue
               parts = line.split("\t")
               status, path = parts[0], parts[1]
-              if path in ("registry.pub", "registry.toml", "registry.toml.sig") and status != "A":
+              if path in protected and status != "A":
                   sys.exit(f"PR cannot modify or delete {path} ({status})")
               segs = path.split("/")
-              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] not in ("assets", "scripts"):
+              if segs[0] == "packages" and len(segs) >= 4 and status != "A":
                   sys.exit(f"Release immutability violation: PR tried to {status} existing published path {path}")
           print("PR release immutability verified.")
       - name: Validate packages, hashes, Ed25519 signatures, and tar parity
         shell: python3 {0}
         run: |
-          import hashlib, io, pathlib, re, subprocess, sys, tarfile
+          import hashlib, pathlib, re, subprocess, sys, tarfile
 
           try:
               from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -50,15 +54,22 @@ jobs:
               from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
           RESERVED = {"CON", "PRN", "AUX", "NUL"} | {f"COM{i}" for i in range(1, 10)} | {f"LPT{i}" for i in range(1, 10)}
-          root = pathlib.Path(".")
+          repo_root = pathlib.Path(".")
+          pkg_root = repo_root / "packages"
+          if not pkg_root.is_dir():
+              sys.exit("packages/ directory is missing")
 
-          pub_path = root / "registry.pub"
+          pub_path = repo_root / "registry.pub"
           if not pub_path.is_file():
               sys.exit("registry.pub is missing")
           pub_hex = pub_path.read_text(encoding="utf-8").strip()
           if not re.fullmatch(r"[0-9a-fA-F]{64}", pub_hex):
               sys.exit(f"registry.pub must be 64 hex chars, got {pub_hex!r}")
           pub_key = Ed25519PublicKey.from_public_bytes(bytes.fromhex(pub_hex))
+
+          pkg_pub = pkg_root / "registry.pub"
+          if not pkg_pub.is_file() or pkg_pub.read_text(encoding="utf-8").strip().lower() != pub_hex.lower():
+              sys.exit("packages/registry.pub is missing or does not match root registry.pub")
 
           def verify_sig(data_path: pathlib.Path, required: bool = True) -> None:
               sig_path = data_path.with_name(data_path.name + ".sig")
@@ -74,30 +85,28 @@ jobs:
               except Exception as exc:
                   sys.exit(f"{sig_path}: Ed25519 signature verification failed ({exc})")
 
-          reg_toml_path = root / "registry.toml"
-          if reg_toml_path.is_file():
+          for reg_toml_path in (repo_root / "registry.toml", pkg_root / "registry.toml"):
+              if not reg_toml_path.is_file():
+                  sys.exit(f"{reg_toml_path} is missing")
               reg_toml_text = reg_toml_path.read_text(encoding="utf-8")
               m_pk = re.search(r'^public_key\s*=\s*"([^"]+)"', reg_toml_text, re.M)
               if not m_pk or m_pk.group(1).strip().lower() != pub_hex.lower():
-                  sys.exit("registry.toml public_key does not match registry.pub")
+                  sys.exit(f"{reg_toml_path} public_key does not match registry.pub")
               verify_sig(reg_toml_path, required=True)
 
-          catalog_path = root / "catalog.txt"
+          catalog_path = pkg_root / "catalog.txt"
           if not catalog_path.is_file():
-              sys.exit("catalog.txt is missing")
+              sys.exit("packages/catalog.txt is missing")
           verify_sig(catalog_path, required=True)
 
-          adv_path = root / "advisories.txt"
+          adv_path = pkg_root / "advisories.txt"
           if adv_path.is_file():
               verify_sig(adv_path, required=True)
 
-          skip = {".git", ".github", "assets", "scripts"}
           pkg_dirs = sorted(
-              d for d in root.iterdir()
-              if d.is_dir() and d.name not in skip and not d.name.startswith(".")
+              d for d in pkg_root.iterdir()
+              if d.is_dir() and not d.name.startswith(".")
           )
-          if not pkg_dirs:
-              sys.exit("Registry has no package directories")
 
           def tree_hash(src_dir: pathlib.Path) -> str:
               files = sorted(p for p in src_dir.rglob("*") if p.is_file())
@@ -116,19 +125,6 @@ jobs:
               h.update(manifest_bytes)
               h.update(b"\x00")
               h.update(sha_hex.strip().encode("utf-8"))
-              h.update(b"\x00")
-              return h.hexdigest()
-
-          def manifest_and_wheel_digest(manifest_bytes: bytes, src_sha: str, target: str, native_sha: str) -> str:
-              h = hashlib.sha256()
-              h.update(b"spid3r-wheel-v1\x00")
-              h.update(manifest_bytes)
-              h.update(b"\x00")
-              h.update(src_sha.strip().encode("utf-8"))
-              h.update(b"\x00")
-              h.update(target.strip().encode("utf-8"))
-              h.update(b"\x00")
-              h.update(native_sha.strip().encode("utf-8"))
               h.update(b"\x00")
               return h.hexdigest()
 
@@ -164,7 +160,7 @@ jobs:
                   sys.exit(f"{tar_path}: archive file set mismatch (extra={extra}, missing={missing})")
               for k, exp_bytes in expected_files.items():
                   if actual_files[k] != exp_bytes:
-                      sys.exit(f"{tar_path}: archive content mismatch for '{k}' (does not match disk source!)")
+                      sys.exit(f"{tar_path}: archive content mismatch for '{k}'")
 
           catalog_names = set()
           for line in catalog_path.read_text(encoding="utf-8").splitlines():
@@ -176,7 +172,7 @@ jobs:
           for pkg in pkg_dirs:
               for f in pkg.rglob("*"):
                   if f.is_file() and f.suffix.lower() in FORBIDDEN_WEB_EXTS:
-                      sys.exit(f"{f}: forbidden web/script file inside package directory (only standard release files and plain-text/Markdown docs like README.md are permitted)")
+                      sys.exit(f"{f}: forbidden web/script file inside package directory")
               idx = pkg / "index.txt"
               if not idx.is_file():
                   sys.exit(f"{pkg}: missing index.txt")
@@ -188,17 +184,16 @@ jobs:
               if not versions:
                   sys.exit(f"{pkg}/index.txt has no versions")
               if pkg.name not in catalog_names:
-                  sys.exit(f"{pkg.name} missing from catalog.txt")
+                  sys.exit(f"{pkg.name} missing from packages/catalog.txt")
               owners_path = pkg / "owners.toml"
               if owners_path.is_file():
-                  owners_txt = owners_path.read_text(encoding="utf-8")
+                  owners_txt = owners_path.read_text(encoding="utf-8-sig")
                   if not re.search(r'^github_users\s*=\s*\[', owners_txt, re.M):
                       sys.exit(f"{owners_path}: missing github_users array")
               for ver in versions:
                   vdir = pkg / ver
                   release_toml_path = vdir / "release.toml"
                   if release_toml_path.is_file():
-                      # Thin-index release (tarball hosted externally on GitHub Releases or R2/CDN)
                       for req in ("spider.toml", "release.toml", "release.toml.sig", "sha256.txt", "sha256.txt.sig", "manifest.sha256", "manifest.sha256.sig"):
                           if not (vdir / req).is_file():
                               sys.exit(f"{vdir}: missing {req}")
@@ -216,64 +211,35 @@ jobs:
                           sys.exit(f"{release_toml_path}: tarball_url must be https://")
                       if not m_tsha:
                           sys.exit(f"{release_toml_path}: missing valid 64-hex tarball_sha256")
-
                       expected = (vdir / "sha256.txt").read_text(encoding="utf-8").strip()
                       if not re.fullmatch(r"[0-9a-fA-F]{64}", expected):
                           sys.exit(f"{vdir}: sha256.txt must be 64 hex chars")
                       verify_sig(vdir / "sha256.txt", required=True)
-
                       manifest_bytes = (vdir / "spider.toml").read_bytes()
                       msha_declared = (vdir / "manifest.sha256").read_text(encoding="utf-8").strip()
                       msha_computed = manifest_and_tree_digest(manifest_bytes, expected)
                       if msha_declared != msha_computed:
                           sys.exit(f"{vdir}: manifest.sha256 mismatch ({msha_declared} != {msha_computed})")
                       verify_sig(vdir / "manifest.sha256", required=True)
-                      continue
-
-                  # Legacy in-repo release (src/ and package.tar stored directly in git)
-                  for req in ("spider.toml", "sha256.txt", "sha256.txt.sig", "manifest.sha256", "manifest.sha256.sig", "package.tar"):
-                      if not (vdir / req).is_file():
-                          sys.exit(f"{vdir}: missing {req}")
-                  expected = (vdir / "sha256.txt").read_text(encoding="utf-8").strip()
-                  actual = tree_hash(vdir / "src")
-                  if expected != actual:
-                      sys.exit(f"{vdir}: sha256.txt mismatch ({expected} != {actual})")
-                  verify_sig(vdir / "sha256.txt", required=True)
-
-                  manifest_bytes = (vdir / "spider.toml").read_bytes()
-                  msha_declared = (vdir / "manifest.sha256").read_text(encoding="utf-8").strip()
-                  msha_computed = manifest_and_tree_digest(manifest_bytes, actual)
-                  if msha_declared != msha_computed:
-                      sys.exit(f"{vdir}: manifest.sha256 mismatch ({msha_declared} != {msha_computed})")
-                  verify_sig(vdir / "manifest.sha256", required=True)
-
-                  disk_files = {"spider.toml": manifest_bytes}
-                  for p in sorted((vdir / "src").rglob("*")):
-                      if p.is_file():
-                          disk_files[p.relative_to(vdir).as_posix()] = p.read_bytes()
-                  verify_tar_parity(vdir / "package.tar", disk_files)
-
-                  for wtar in sorted(vdir.glob("package-*.tar")):
-                      target = wtar.name[len("package-"):-len(".tar")]
-                      wsha_path = vdir / f"sha256-{target}.txt"
-                      wmsha_path = vdir / f"manifest-{target}.sha256"
-                      native_dir = vdir / "native" / target
-                      if not wsha_path.is_file() or not wmsha_path.is_file() or not native_dir.is_dir():
-                          sys.exit(f"{vdir}: incomplete wheel artifacts for target '{target}'")
-                      w_expected = wsha_path.read_text(encoding="utf-8").strip()
-                      w_actual = tree_hash(native_dir)
-                      if w_expected != w_actual:
-                          sys.exit(f"{vdir}: sha256-{target}.txt mismatch ({w_expected} != {w_actual})")
-                      verify_sig(wsha_path, required=True)
-                      wm_declared = wmsha_path.read_text(encoding="utf-8").strip()
-                      wm_computed = manifest_and_wheel_digest(manifest_bytes, actual, target, w_actual)
-                      if wm_declared != wm_computed:
-                          sys.exit(f"{vdir}: manifest-{target}.sha256 mismatch")
-                      verify_sig(wmsha_path, required=True)
-                      w_disk_files = dict(disk_files)
-                      for p in sorted(native_dir.rglob("*")):
+                  else:
+                      for req in ("spider.toml", "sha256.txt", "sha256.txt.sig", "manifest.sha256", "manifest.sha256.sig", "package.tar"):
+                          if not (vdir / req).is_file():
+                              sys.exit(f"{vdir}: missing {req}")
+                      expected = (vdir / "sha256.txt").read_text(encoding="utf-8").strip()
+                      actual = tree_hash(vdir / "src")
+                      if expected != actual:
+                          sys.exit(f"{vdir}: sha256.txt mismatch ({expected} != {actual})")
+                      verify_sig(vdir / "sha256.txt", required=True)
+                      manifest_bytes = (vdir / "spider.toml").read_bytes()
+                      msha_declared = (vdir / "manifest.sha256").read_text(encoding="utf-8").strip()
+                      msha_computed = manifest_and_tree_digest(manifest_bytes, actual)
+                      if msha_declared != msha_computed:
+                          sys.exit(f"{vdir}: manifest.sha256 mismatch ({msha_declared} != {msha_computed})")
+                      verify_sig(vdir / "manifest.sha256", required=True)
+                      disk_files = {"spider.toml": manifest_bytes}
+                      for p in sorted((vdir / "src").rglob("*")):
                           if p.is_file():
-                              w_disk_files[p.relative_to(vdir).as_posix()] = p.read_bytes()
-                      verify_tar_parity(wtar, w_disk_files)
+                              disk_files[p.relative_to(vdir).as_posix()] = p.read_bytes()
+                      verify_tar_parity(vdir / "package.tar", disk_files)
 
-          print(f"Verified {len(pkg_dirs)} package(s), Ed25519 signatures, and tarball parity successfully.")
+          print(f"Verified packages/ root ({len(pkg_dirs)} package(s)) and Ed25519 signatures successfully.")

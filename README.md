@@ -57,19 +57,20 @@ Authors keep their package in **their own public GitHub repository** — you nev
 ## Registry Thin-Index Layout
 
 ```text
-<package>/
-├── index.txt              # Semver-sorted versions
-├── index.txt.sig
-├── owners.toml            # Authorized GitHub usernames
-├── README.md              # Optional package documentation
-└── <version>/
-    ├── spider.toml
-    ├── release.toml       # tarball_url, tarball_sha256, source_repo, source_tag
-    ├── release.toml.sig
-    ├── sha256.txt
-    ├── sha256.txt.sig
-    ├── manifest.sha256
-    └── manifest.sha256.sig
+packages/
+├── catalog.txt              # Signed package catalog
+├── catalog.txt.sig
+├── registry.toml (+ .sig)
+├── registry.pub
+└── <package>/
+    ├── index.txt (+ .sig)   # Semver-sorted versions
+    ├── owners.toml          # Authorized GitHub usernames
+    ├── README.md            # Optional package documentation
+    └── <version>/
+        ├── spider.toml
+        ├── release.toml (+ .sig)    # tarball_url, tarball_sha256, source_repo, source_tag
+        ├── sha256.txt (+ .sig)
+        └── manifest.sha256 (+ .sig)
 ```
 
 > **Upgrading to Cloudflare Workers + R2 later:** `.github/workflows/publish.yml` already listens to `repository_dispatch` (`publish-package`) with an optional `tarball_url` payload field, so a direct `spkg publish` Worker/R2 uploader can plug straight into this exact thin-index format without changing `spkg install`.

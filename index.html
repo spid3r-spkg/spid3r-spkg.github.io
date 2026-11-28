@@ -1285,15 +1285,17 @@ Package Subdirectory: (leave blank if at root)</pre>
               <p style="font-size: 0.86rem; color: var(--fg-secondary); margin: 0 0 0.55rem;">To keep this Git repository fast and tiny, source code and tarballs are <strong>never committed to Git</strong>. Instead, CI builds a deterministic <code>package.tar</code>, mirrors it to an immutable GitHub Release asset, and commits only kilobytes of Ed25519-signed metadata:</p>
               <div class="code-wrap">
                 <button class="copy-float" type="button">Copy</button>
-<pre>&lt;pkg&gt;/
-├── owners.toml          # Authorized GitHub publishers
-├── index.txt (+ .sig)   # Semver-sorted versions
-├── README.md            # Copied from your repo
-└── &lt;version&gt;/
-    ├── spider.toml
-    ├── release.toml (+ .sig)    # tarball_url + tarball_sha256
-    ├── sha256.txt (+ .sig)      # Deterministic src/ tree hash
-    └── manifest.sha256 (+ .sig) # Combined manifest + tree digest</pre>
+<pre>packages/
+├── catalog.txt (+ .sig)
+└── &lt;pkg&gt;/
+    ├── owners.toml          # Authorized GitHub publishers
+    ├── index.txt (+ .sig)   # Semver-sorted versions
+    ├── README.md            # Copied from your repo
+    └── &lt;version&gt;/
+        ├── spider.toml
+        ├── release.toml (+ .sig)    # tarball_url + tarball_sha256
+        ├── sha256.txt (+ .sig)      # Deterministic src/ tree hash
+        └── manifest.sha256 (+ .sig) # Combined manifest + tree digest</pre>
               </div>
             </div>
 
@@ -1398,8 +1400,8 @@ Package Subdirectory: (leave blank if at root)</pre>
   <footer>
     <span><strong>Spid3r Package Registry</strong> · Thin-index Ed25519-signed artifacts for <code>spkg</code></span>
     <span class="footer-links">
-      <a href="./catalog.txt">catalog.txt</a> ·
-      <a href="./registry.toml">registry.toml</a> ·
+      <a href="./packages/catalog.txt">packages/catalog.txt</a> ·
+      <a href="./packages/registry.toml">packages/registry.toml</a> ·
       <a href="./registry.pub">registry.pub</a> ·
       <a href="https://github.com/spid3r-spkg/spid3r-spkg.github.io" target="_blank" rel="noopener noreferrer">GitHub</a> ·
       <a href="https://github.com/needyamin/spid3r" target="_blank" rel="noopener noreferrer">Spid3r</a>
@@ -1805,7 +1807,7 @@ Package Subdirectory: (leave blank if at root)</pre>
       wireCopy(document.getElementById('copyPkBtn'), function () { return state.pubKey; });
       updateTrustIni();
 
-      fetch('./registry.toml')
+      fetch('./packages/registry.toml', { cache: 'no-cache' })
         .then(function (r) { return r.ok ? r.text() : ''; })
         .then(function (txt) {
           if (!txt) return;
@@ -2161,7 +2163,7 @@ Package Subdirectory: (leave blank if at root)</pre>
           tdCmd.appendChild(c);
 
           var tdArt = document.createElement('td');
-          var base = './' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(v) + '/';
+          var base = './packages/' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(v) + '/';
           var tarA = document.createElement('a');
           tarA.href = base + 'package.tar';
           tarA.textContent = 'package.tar';
@@ -2250,7 +2252,7 @@ Package Subdirectory: (leave blank if at root)</pre>
         document.getElementById('detailSigBadge').textContent = 'Checking signature...';
         document.getElementById('detailSigBadge').className = 'sig-badge';
 
-        var base = './' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(ver) + '/';
+        var base = './packages/' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(ver) + '/';
         var artWrap = document.getElementById('sideArtifacts');
         function renderArtifacts(releaseMeta) {
           artWrap.textContent = '';
@@ -2267,7 +2269,7 @@ Package Subdirectory: (leave blank if at root)</pre>
             { label: 'sha256.txt', href: base + 'sha256.txt' },
             { label: 'sha256.txt.sig', href: base + 'sha256.txt.sig' },
             { label: 'manifest.sha256', href: base + 'manifest.sha256' },
-            { label: 'index.txt', href: './' + encodeURIComponent(pkg.name) + '/index.txt' }
+            { label: 'index.txt', href: './packages/' + encodeURIComponent(pkg.name) + '/index.txt' }
           );
           if (releaseMeta && releaseMeta.sourceRepo && /^https:\/\/github\.com\//.test(releaseMeta.sourceRepo)) {
             items.push({ label: 'Source Repo', href: releaseMeta.sourceRepo, external: true });
@@ -2310,9 +2312,9 @@ Package Subdirectory: (leave blank if at root)</pre>
         var readmeEl = document.getElementById('tabPanelReadme');
         readmeEl.textContent = 'Loading documentation...';
         fetchFirstAvailable([
-          './' + encodeURIComponent(pkg.name) + '/README.md',
+          './packages/' + encodeURIComponent(pkg.name) + '/README.md',
           base + 'README.md',
-          './' + encodeURIComponent(pkg.name) + '/README.txt',
+          './packages/' + encodeURIComponent(pkg.name) + '/README.txt',
           base + 'README.txt'
         ]).then(function (hit) {
           if (myLoad !== loadSeq) return;
@@ -2423,7 +2425,7 @@ Package Subdirectory: (leave blank if at root)</pre>
         // Verify sha256.txt + sha256.txt.sig cryptographically when WebCrypto Ed25519 is available.
         var shaPromise = fetch(base + 'sha256.txt').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
         var sigPromise = fetch(base + 'sha256.txt.sig').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
-        var yankPromise = fetch('./' + encodeURIComponent(pkg.name) + '/yanked.txt').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+        var yankPromise = fetch('./packages/' + encodeURIComponent(pkg.name) + '/yanked.txt').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
 
         Promise.all([shaPromise, sigPromise, yankPromise]).then(function (res) {
           if (myLoad !== loadSeq) return;
@@ -2474,7 +2476,7 @@ Package Subdirectory: (leave blank if at root)</pre>
         });
 
         // Refresh versions list from index.txt
-        fetch('./' + encodeURIComponent(pkg.name) + '/index.txt')
+        fetch('./packages/' + encodeURIComponent(pkg.name) + '/index.txt')
           .then(function (r) { return r.ok ? r.text() : ''; })
           .then(function (idxTxt) {
             if (myLoad !== loadSeq) return;
@@ -2598,7 +2600,7 @@ Package Subdirectory: (leave blank if at root)</pre>
       }
       window.addEventListener('hashchange', parseHashAndRoute);
 
-      fetch('./catalog.txt')
+      fetch('./packages/catalog.txt', { cache: 'no-cache' })
         .then(function (r) {
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();

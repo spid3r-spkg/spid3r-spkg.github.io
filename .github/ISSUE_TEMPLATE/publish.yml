@@ -32,7 +32,7 @@ body:
     attributes:
       label: Package Subdirectory (Optional)
       description: Leave blank if `spider.toml` is at the repository root. Otherwise provide a relative path (e.g. `packages/my-pkg`).
-      placeholder: ""
+      placeholder: packages/my-pkg
     validations:
       required: false
 

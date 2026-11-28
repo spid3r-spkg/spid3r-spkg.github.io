@@ -38,7 +38,8 @@ jobs:
   publish:
     if: >
       github.event_name != 'issues' ||
-      contains(github.event.issue.labels.*.name, 'publish')
+      contains(github.event.issue.labels.*.name, 'publish') ||
+      startsWith(github.event.issue.title, '[Publish]:')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout registry

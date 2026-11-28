@@ -1,0 +1,133 @@
+name: Migrate Legacy Packages to Thin Index
+
+on:
+  workflow_dispatch:
+    inputs:
+      remove_legacy_files:
+        description: "Remove in-repo src/ and package.tar after mirroring to GitHub Releases"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-registry
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout registry
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python & cryptography
+        run: python3 -m pip install --quiet cryptography
+
+      - name: Mirror legacy package.tar to GitHub Releases and write signed release.toml
+        env:
+          REGISTRY_SIGN_KEY: ${{ secrets.REGISTRY_SIGN_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          REMOVE_LEGACY: ${{ github.event.inputs.remove_legacy_files }}
+        shell: python3 {0}
+        run: |
+          import datetime, hashlib, os, pathlib, re, shutil, subprocess, sys
+          try:
+              import tomllib
+          except ImportError:
+              import tomli as tomllib
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+          root = pathlib.Path(".")
+          seed = os.environ.get("REGISTRY_SIGN_KEY", "").strip()
+          if not re.fullmatch(r"[0-9a-fA-F]{64}", seed):
+              sys.exit("REGISTRY_SIGN_KEY secret is missing or invalid")
+          priv = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed))
+          pub_hex = priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+          expected_pub = (root / "registry.pub").read_text(encoding="utf-8").strip().lower()
+          if pub_hex.lower() != expected_pub:
+              sys.exit(f"REGISTRY_SIGN_KEY public key ({pub_hex}) != registry.pub ({expected_pub})")
+
+          reg_repo = os.environ["GITHUB_REPO"]
+          remove_legacy = os.environ.get("REMOVE_LEGACY", "true").lower() == "true"
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          skip = {".git", ".github", "assets", "scripts"}
+          migrated = []
+
+          for pkg_dir in sorted(d for d in root.iterdir() if d.is_dir() and d.name not in skip and not d.name.startswith(".")):
+              idx = pkg_dir / "index.txt"
+              if not idx.is_file():
+                  continue
+              owners_repo = f"https://github.com/needyamin/{pkg_dir.name}"
+              owners_path = pkg_dir / "owners.toml"
+              if owners_path.is_file():
+                  odata = tomllib.loads(owners_path.read_text(encoding="utf-8"))
+                  if odata.get("repository"):
+                      owners_repo = str(odata["repository"]).strip()
+              versions = [v.strip() for v in idx.read_text(encoding="utf-8").splitlines() if v.strip() and not v.strip().startswith("#")]
+              for ver in versions:
+                  vdir = pkg_dir / ver
+                  tar_path = vdir / "package.tar"
+                  rel_path = vdir / "release.toml"
+                  if rel_path.is_file() or not tar_path.is_file():
+                      continue
+
+                  tar_sha = hashlib.sha256(tar_path.read_bytes()).hexdigest()
+                  release_tag = f"{pkg_dir.name}-{ver}"
+                  tarball_url = f"https://github.com/{reg_repo}/releases/download/{release_tag}/package.tar"
+
+                  # Upload package.tar to GitHub Release (idempotent if release already exists)
+                  check = subprocess.run(["gh", "release", "view", release_tag], capture_output=True)
+                  if check.returncode != 0:
+                      subprocess.check_call([
+                          "gh", "release", "create", release_tag, str(tar_path),
+                          "--title", f"{pkg_dir.name} v{ver}",
+                          "--notes", f"Immutable release archive for `{pkg_dir.name}@{ver}` (sha256: `{tar_sha}`).",
+                      ])
+                  else:
+                      subprocess.check_call(["gh", "release", "upload", release_tag, str(tar_path), "--clobber"])
+
+                  release_toml = "\n".join([
+                      f'name = "{pkg_dir.name}"',
+                      f'version = "{ver}"',
+                      f'tarball_url = "{tarball_url}"',
+                      f'tarball_sha256 = "{tar_sha}"',
+                      f'source_repo = "{owners_repo}"',
+                      f'source_tag = "v{ver}"',
+                      'published_by = "needyamin"',
+                      f'published_at = "{now}"',
+                      "",
+                  ])
+                  rel_path.write_text(release_toml, encoding="utf-8")
+                  sig = priv.sign(rel_path.read_bytes()).hex()
+                  (vdir / "release.toml.sig").write_text(sig + "\n", encoding="utf-8")
+
+                  if remove_legacy:
+                      tar_path.unlink(missing_ok=True)
+                      src_dir = vdir / "src"
+                      if src_dir.is_dir():
+                          shutil.rmtree(src_dir)
+
+                  migrated.append(f"{pkg_dir.name}@{ver}")
+                  print(f"Migrated {pkg_dir.name}@{ver} -> {tarball_url}")
+
+          if not migrated:
+              print("No legacy packages needed migration.")
+
+      - name: Commit migrated thin-index packages
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "spid3r-spkg-bot"
+            git config user.email "spid3r-spkg-bot@users.noreply.github.com"
+            git add -A
+            git commit -m "Migrate hello and nettools to thin-index releases"
+            git push origin HEAD:main
+          else
+            echo "Nothing to commit."
+          fi

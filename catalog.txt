@@ -1,5 +1,4 @@
 # Spid3r Package Registry Catalog
 # name	latest	versions	description	categories	targets	license
-demo-plugin	0.1.0	0.1.0	Demo plugin package for Spid3r showcasing zero-clone thin-index publishing via spkg	demo,utils	windows,linux,macos	MIT
 hello	0.1.0	0.1.0	Starter greeting package for Spid3r			
 nettools	0.1.2	0.1.0,0.1.1,0.1.2	Cross-platform network diagnostics toolkit & CLI: Ping, Traceroute, TCP Ping, DNS/DoH, Subnet/CIDR math, HTTP/TLS checks, WHOIS/RDAP, and local companion server	net,cli,diagnostics	linux,macos,windows	MIT

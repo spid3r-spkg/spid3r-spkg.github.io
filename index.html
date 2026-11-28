@@ -531,6 +531,99 @@
     .panel h3 { margin: 0 0 0.45rem; font-size: 1.1rem; }
     .panel p { margin: 0 0 0.75rem; color: var(--fg-secondary); font-size: 0.91rem; }
 
+    /* Full-width Developer Publishing Guide */
+    .panel-wide { grid-column: 1 / -1; padding: 1.5rem 1.55rem; }
+    .pub-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .pub-head h3 { font-size: 1.28rem; margin: 0 0 0.35rem; }
+    .pub-head p { margin: 0; max-width: 760px; }
+    .pub-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .pub-step {
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.05rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+    .pub-step-top {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .pub-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .pub-step h4 { margin: 0; font-size: 0.98rem; color: var(--fg); }
+    .pub-step p { margin: 0; font-size: 0.87rem; color: var(--fg-secondary); line-height: 1.55; }
+    .pub-arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .pub-box {
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.1rem;
+    }
+    .pub-box h4 { margin: 0 0 0.5rem; font-size: 0.98rem; color: var(--fg); }
+    .pub-flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0.55rem 0 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .pub-node {
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 0.25rem 0.55rem;
+      color: var(--fg);
+      font-family: var(--mono);
+    }
+    .pub-arrow { color: var(--accent); font-weight: 800; }
+    .pub-rules {
+      margin: 0;
+      padding-left: 1.15rem;
+      color: var(--fg-secondary);
+      font-size: 0.87rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.42rem;
+    }
+    .pub-rules strong { color: var(--fg); }
+
     .code-wrap { position: relative; margin-top: 0.55rem; }
     .code-wrap .copy-float {
       position: absolute;
@@ -923,20 +1016,125 @@ trust_pk = loading...</pre>
           </div>
         </section>
 
-        <section class="panel" id="publish">
-          <h3>Publish a Package (No Cloning Required)</h3>
-          <p>Keep your package in your own public GitHub repository with <code>spider.toml</code>, <code>src/</code>, and an optional <code>README.md</code>. Tag a release, then submit it — GitHub Actions automatically validates, mirrors <code>package.tar</code> to an immutable release, signs the thin index with Ed25519, and publishes it.</p>
-          <div class="code-wrap">
-            <button class="copy-float" type="button">Copy</button>
-<pre># 1. In your own package repository:
-git tag v0.1.0
-git push origin v0.1.0
-
-# 2. Submit your repo &amp; tag via the Publish Package issue form (no fork or clone needed):
-#    https://github.com/spid3r-spkg/spid3r-spkg.github.io/issues/new?template=publish.yml</pre>
+        <section class="panel panel-wide" id="publish">
+          <div class="pub-head">
+            <div>
+              <h3>Developer Guide: How to Publish &amp; How the Registry Works</h3>
+              <p>Spid3r uses a <strong>zero-clone, thin-index registry</strong>. Keep your code in your own public GitHub repository — you never need to fork or clone <code>spid3r-spkg.github.io</code>. Tag a release, submit the publish form, and GitHub Actions handles validation, immutable tarball mirroring, and Ed25519 signing automatically.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <a class="btn btn-primary" href="https://github.com/spid3r-spkg/spid3r-spkg.github.io/issues/new?template=publish.yml" target="_blank" rel="noopener noreferrer">Submit Package via GitHub Issue &rarr;</a>
+              <a class="btn" href="https://github.com/spid3r-spkg/spid3r-spkg.github.io/actions" target="_blank" rel="noopener noreferrer">View Publish Bot Runs</a>
+            </div>
           </div>
-          <div style="margin-top: 0.75rem;">
-            <a class="btn btn-primary btn-sm" href="https://github.com/spid3r-spkg/spid3r-spkg.github.io/issues/new?template=publish.yml" target="_blank" rel="noopener noreferrer">Submit Package via GitHub Issue &rarr;</a>
+
+          <div class="pub-steps">
+            <div class="pub-step">
+              <div class="pub-step-top">
+                <span class="pub-num">1</span>
+                <h4>Prepare Your Repository</h4>
+              </div>
+              <p>Create a public GitHub repo with <code>spider.toml</code>, a <code>src/</code> directory containing your <code>.matrix</code> modules (mark exports with <code>public</code>), and an optional <code>README.md</code>.</p>
+              <div class="code-wrap">
+                <button class="copy-float" type="button">Copy</button>
+<pre># Repository layout
+my-pkg/
+├── spider.toml
+├── README.md        # optional, rendered on portal
+└── src/
+    └── lib.matrix</pre>
+              </div>
+            </div>
+
+            <div class="pub-step">
+              <div class="pub-step-top">
+                <span class="pub-num">2</span>
+                <h4>Configure <code>spider.toml</code></h4>
+              </div>
+              <p>Declare valid lowercase package <code>name</code>, semver <code>version</code>, and <code>entry</code>. Add <code>[bin]</code> if your package provides CLI tools for <code>spkg tool install</code>.</p>
+              <div class="code-wrap">
+                <button class="copy-float" type="button">Copy</button>
+<pre>[package]
+name = "my_pkg"
+version = "0.1.0"
+entry = "src/lib.matrix"
+description = "Short description of your package"
+license = "MIT"
+categories = ["utils"]
+targets = ["linux", "macos", "windows"]</pre>
+              </div>
+            </div>
+
+            <div class="pub-step">
+              <div class="pub-step-top">
+                <span class="pub-num">3</span>
+                <h4>Tag &amp; Push Your Release</h4>
+              </div>
+              <p>Create a Git tag matching your <code>spider.toml</code> version (<code>v0.1.0</code>, <code>0.1.0</code>, or <code>my_pkg-0.1.0</code>) and push it to GitHub.</p>
+              <div class="code-wrap">
+                <button class="copy-float" type="button">Copy</button>
+<pre>git add .
+git commit -m "Release v0.1.0"
+git tag v0.1.0
+git push origin main --tags</pre>
+              </div>
+            </div>
+
+            <div class="pub-step">
+              <div class="pub-step-top">
+                <span class="pub-num">4</span>
+                <h4>Submit the Publish Issue</h4>
+              </div>
+              <p>Open the <a href="https://github.com/spid3r-spkg/spid3r-spkg.github.io/issues/new?template=publish.yml" target="_blank" rel="noopener noreferrer">Publish Package</a> issue form with your <code>owner/repo</code>, Git tag, and optional monorepo subdirectory. The bot replies with your install command and closes the issue automatically.</p>
+              <div class="code-wrap">
+                <button class="copy-float" type="button">Copy</button>
+<pre># Example Publish Package form fields:
+GitHub Repository:    yourname/my-pkg
+Git Tag:              v0.1.0
+Package Subdirectory: (leave blank if at root)</pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="pub-arch-grid">
+            <div class="pub-box">
+              <h4>How the Thin-Index Architecture Works</h4>
+              <div class="pub-flow">
+                <span class="pub-node">Your Repo @tag</span>
+                <span class="pub-arrow">&rarr;</span>
+                <span class="pub-node">Publish Bot CI</span>
+                <span class="pub-arrow">&rarr;</span>
+                <span class="pub-node">Immutable Release (.tar)</span>
+                <span class="pub-arrow">+</span>
+                <span class="pub-node">Signed Thin Index</span>
+                <span class="pub-arrow">&rarr;</span>
+                <span class="pub-node">spkg install</span>
+              </div>
+              <p style="font-size: 0.86rem; color: var(--fg-secondary); margin: 0 0 0.55rem;">To keep this Git repository fast and tiny, source code and tarballs are <strong>never committed to Git</strong>. Instead, CI builds a deterministic <code>package.tar</code>, mirrors it to an immutable GitHub Release asset, and commits only kilobytes of Ed25519-signed metadata:</p>
+              <div class="code-wrap">
+                <button class="copy-float" type="button">Copy</button>
+<pre>&lt;pkg&gt;/
+├── owners.toml          # Authorized GitHub publishers
+├── index.txt (+ .sig)   # Semver-sorted versions
+├── README.md            # Copied from your repo
+└── &lt;version&gt;/
+    ├── spider.toml
+    ├── release.toml (+ .sig)    # tarball_url + tarball_sha256
+    ├── sha256.txt (+ .sig)      # Deterministic src/ tree hash
+    └── manifest.sha256 (+ .sig) # Combined manifest + tree digest</pre>
+              </div>
+            </div>
+
+            <div class="pub-box">
+              <h4>Security, Ownership &amp; Validation Rules</h4>
+              <ul class="pub-rules">
+                <li><strong>Automatic Ownership (<code>owners.toml</code>):</strong> When you publish a brand-new package name, your GitHub username is recorded in <code>&lt;pkg&gt;/owners.toml</code>. Only listed owners can publish future versions of that package.</li>
+                <li><strong>Strict Release Immutability:</strong> Once a version (e.g. <code>0.1.0</code>) is published, it can never be overwritten or modified. Always bump the semver version for fixes.</li>
+                <li><strong>Tag &amp; Semver Parity:</strong> Your Git tag must match <code>version</code> in <code>spider.toml</code> (<code>vX.Y.Z</code>, <code>X.Y.Z</code>, or <code>&lt;name&gt;-X.Y.Z</code>).</li>
+                <li><strong>No Web Scripts or Private Keys:</strong> Files ending in <code>.html</code>, <code>.js</code>, <code>.css</code>, <code>.svg</code>, <code>.wasm</code>, <code>.php</code>, or <code>*.key</code>, as well as symlinks or path traversal entries, are rejected automatically.</li>
+                <li><strong>End-to-End Ed25519 Signing:</strong> The registry CI signs every release descriptor, tree hash, index, and catalog entry with the official key in <code>registry.pub</code> — contributors never handle signing keys.</li>
+              </ul>
+            </div>
           </div>
         </section>
       </div>

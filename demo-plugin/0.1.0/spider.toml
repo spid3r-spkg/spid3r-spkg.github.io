@@ -1,0 +1,9 @@
+﻿[package]
+name = "demo-plugin"
+version = "0.1.0"
+entry = "src/lib.matrix"
+description = "Demo plugin package for Spid3r showcasing zero-clone thin-index publishing via spkg"
+license = "MIT"
+spid3r = ">=1.5.2"
+categories = ["demo", "utils"]
+targets = ["windows", "linux", "macos"]

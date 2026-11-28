@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Spid3r Language & spkg CLI Issues
+    url: https://github.com/needyamin/spid3r/issues
+    about: Report compiler, runtime, or spkg CLI bugs in the main Spid3r repository.

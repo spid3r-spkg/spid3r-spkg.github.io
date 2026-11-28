@@ -1,0 +1,3 @@
+# Authorized GitHub publishers for hello
+github_users = ["needyamin"]
+repository = "https://github.com/needyamin/spid3r"

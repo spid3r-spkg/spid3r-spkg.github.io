@@ -924,13 +924,19 @@ trust_pk = loading...</pre>
         </section>
 
         <section class="panel" id="publish">
-          <h3>Publish Standard Packages</h3>
-          <p>Publish signed releases with <code>spkg publish</code> and document your package with a plain-text <code>&lt;pkg&gt;/README.md</code>. Raw HTML/JS files inside package folders are blocked by CI.</p>
+          <h3>Publish a Package (No Cloning Required)</h3>
+          <p>Keep your package in your own public GitHub repository with <code>spider.toml</code>, <code>src/</code>, and an optional <code>README.md</code>. Tag a release, then submit it — GitHub Actions automatically validates, mirrors <code>package.tar</code> to an immutable release, signs the thin index with Ed25519, and publishes it.</p>
           <div class="code-wrap">
             <button class="copy-float" type="button">Copy</button>
-<pre>SPID3R_SIGN_KEY=&lt;64-hex-seed&gt; spkg publish --to-dir ./spid3r-spkg.github.io
-# Add optional docs:
-#   &lt;pkg&gt;/README.md</pre>
+<pre># 1. In your own package repository:
+git tag v0.1.0
+git push origin v0.1.0
+
+# 2. Submit your repo &amp; tag via the Publish Package issue form (no fork or clone needed):
+#    https://github.com/spid3r-spkg/spid3r-spkg.github.io/issues/new?template=publish.yml</pre>
+          </div>
+          <div style="margin-top: 0.75rem;">
+            <a class="btn btn-primary btn-sm" href="https://github.com/spid3r-spkg/spid3r-spkg.github.io/issues/new?template=publish.yml" target="_blank" rel="noopener noreferrer">Submit Package via GitHub Issue &rarr;</a>
           </div>
         </section>
       </div>
@@ -1870,21 +1876,55 @@ trust_pk = loading...</pre>
 
         var base = './' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(ver) + '/';
         var artWrap = document.getElementById('sideArtifacts');
-        artWrap.textContent = '';
-        [
-          { label: 'package.tar', href: base + 'package.tar' },
-          { label: 'spider.toml', href: base + 'spider.toml' },
-          { label: 'sha256.txt', href: base + 'sha256.txt' },
-          { label: 'sha256.txt.sig', href: base + 'sha256.txt.sig' },
-          { label: 'manifest.sha256', href: base + 'manifest.sha256' },
-          { label: 'index.txt', href: './' + encodeURIComponent(pkg.name) + '/index.txt' }
-        ].forEach(function (item) {
-          var a = document.createElement('a');
-          a.className = 'btn btn-sm';
-          a.href = item.href;
-          a.textContent = item.label;
-          artWrap.appendChild(a);
-        });
+        function renderArtifacts(releaseMeta) {
+          artWrap.textContent = '';
+          var tarHref = (releaseMeta && releaseMeta.tarballUrl) ? releaseMeta.tarballUrl : (base + 'package.tar');
+          var items = [
+            { label: 'package.tar', href: tarHref, external: !!(releaseMeta && releaseMeta.tarballUrl) },
+            { label: 'spider.toml', href: base + 'spider.toml' }
+          ];
+          if (releaseMeta && releaseMeta.raw) {
+            items.push({ label: 'release.toml', href: base + 'release.toml' });
+            items.push({ label: 'release.toml.sig', href: base + 'release.toml.sig' });
+          }
+          items.push(
+            { label: 'sha256.txt', href: base + 'sha256.txt' },
+            { label: 'sha256.txt.sig', href: base + 'sha256.txt.sig' },
+            { label: 'manifest.sha256', href: base + 'manifest.sha256' },
+            { label: 'index.txt', href: './' + encodeURIComponent(pkg.name) + '/index.txt' }
+          );
+          if (releaseMeta && releaseMeta.sourceRepo && /^https:\/\/github\.com\//.test(releaseMeta.sourceRepo)) {
+            items.push({ label: 'Source Repo', href: releaseMeta.sourceRepo, external: true });
+          }
+          items.forEach(function (item) {
+            var a = document.createElement('a');
+            a.className = 'btn btn-sm';
+            a.href = item.href;
+            a.textContent = item.label;
+            if (item.external) {
+              a.target = '_blank';
+              a.rel = 'noopener noreferrer';
+            }
+            artWrap.appendChild(a);
+          });
+        }
+        renderArtifacts(null);
+
+        var releasePromise = fetch(base + 'release.toml')
+          .then(function (r) { return r.ok ? r.text() : ''; })
+          .then(function (txt) {
+            if (!txt) return null;
+            var urlM = txt.match(/^tarball_url\s*=\s*"([^"]+)"/m);
+            var repoM = txt.match(/^source_repo\s*=\s*"([^"]+)"/m);
+            var meta = {
+              raw: txt,
+              tarballUrl: (urlM && /^https:\/\//.test(urlM[1])) ? urlM[1] : '',
+              sourceRepo: repoM ? repoM[1] : ''
+            };
+            if (myLoad === loadSeq) renderArtifacts(meta);
+            return meta;
+          })
+          .catch(function () { return null; });
 
         try {
           window.history.replaceState(null, '', '#pkg/' + encodeURIComponent(pkg.name) + '/' + encodeURIComponent(ver));
@@ -1965,27 +2005,39 @@ trust_pk = loading...</pre>
             ));
 
             var safeEntry = entryPath.replace(/^\/+/, '');
-            if (isSafeEntryPath(safeEntry)) {
-              fetch(base + safeEntry)
-                .then(function (sr) { return sr.ok ? sr.text() : ''; })
-                .then(function (srcTxt) {
-                  if (myLoad !== loadSeq) return;
-                  manifestPanel.appendChild(makeCopyCodeBlock(
-                    entryPath,
-                    'Entry module source',
-                    srcTxt || '// Entry source unavailable',
-                    'matrix'
-                  ));
-                })
-                .catch(function () {});
-            } else {
-              manifestPanel.appendChild(makeCopyCodeBlock(
-                entryPath,
-                'Entry module source',
-                '// Invalid or unsafe entry path in manifest',
-                'matrix'
-              ));
-            }
+            releasePromise.then(function (relMeta) {
+              if (myLoad !== loadSeq) return;
+              if (relMeta && relMeta.raw) {
+                manifestPanel.appendChild(makeCopyCodeBlock(
+                  'release.toml',
+                  'Signed thin-index release descriptor for ' + pkg.name + '@' + ver,
+                  relMeta.raw,
+                  'toml'
+                ));
+              }
+              if (isSafeEntryPath(safeEntry)) {
+                fetch(base + safeEntry)
+                  .then(function (sr) { return sr.ok ? sr.text() : ''; })
+                  .then(function (srcTxt) {
+                    if (myLoad !== loadSeq) return;
+                    if (!srcTxt && relMeta && relMeta.raw) return;
+                    manifestPanel.appendChild(makeCopyCodeBlock(
+                      entryPath,
+                      'Entry module source',
+                      srcTxt || '// Entry source unavailable',
+                      'matrix'
+                    ));
+                  })
+                  .catch(function () {});
+              } else {
+                manifestPanel.appendChild(makeCopyCodeBlock(
+                  entryPath,
+                  'Entry module source',
+                  '// Invalid or unsafe entry path in manifest',
+                  'matrix'
+                ));
+              }
+            });
           })
           .catch(function () {
             if (myLoad !== loadSeq) return;

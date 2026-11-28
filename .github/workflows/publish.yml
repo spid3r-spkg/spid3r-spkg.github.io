@@ -1,0 +1,187 @@
+name: Publish Package (Thin Index)
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Contributor GitHub repo (owner/repo)"
+        required: true
+        type: string
+      tag:
+        description: "Git tag to publish (e.g. v0.1.0)"
+        required: true
+        type: string
+      subdir:
+        description: "Optional subdirectory containing spider.toml"
+        required: false
+        default: ""
+        type: string
+      allow_maintainer:
+        description: "Allow maintainer override of owners.toml"
+        required: false
+        default: false
+        type: boolean
+  repository_dispatch:
+    types: [publish-package]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: publish-registry
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >
+      github.event_name != 'issues' ||
+      contains(github.event.issue.labels.*.name, 'publish')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout registry
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python & cryptography
+        run: python3 -m pip install --quiet cryptography
+
+      - name: Parse publish request
+        id: req
+        shell: python3 {0}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_USER: ${{ github.event.issue.user.login }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          INPUT_REPO: ${{ github.event.inputs.repository }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_SUBDIR: ${{ github.event.inputs.subdir }}
+          INPUT_ALLOW_MAINTAINER: ${{ github.event.inputs.allow_maintainer }}
+          DISPATCH_REPO: ${{ github.event.client_payload.repository }}
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+          DISPATCH_SUBDIR: ${{ github.event.client_payload.subdir }}
+          DISPATCH_ACTOR: ${{ github.event.client_payload.actor }}
+          DISPATCH_TARBALL_URL: ${{ github.event.client_payload.tarball_url }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          import os, re, sys
+
+          def parse_issue_form(body: str) -> dict[str, str]:
+              sections = {}
+              parts = re.split(r"(?m)^###\s+(.+?)\s*$", body or "")
+              for i in range(1, len(parts), 2):
+                  heading = parts[i].strip().lower()
+                  val = parts[i + 1].strip() if i + 1 < len(parts) else ""
+                  if val.lower() == "_no response_":
+                      val = ""
+                  sections[heading] = val.splitlines()[0].strip() if val else ""
+              return sections
+
+          event = os.environ["EVENT_NAME"]
+          repo = tag = subdir = actor = tarball_url = ""
+          allow_maintainer = "false"
+
+          if event == "issues":
+              fields = parse_issue_form(os.environ.get("ISSUE_BODY", ""))
+              repo = fields.get("github repository", "")
+              tag = fields.get("git tag", "")
+              subdir = fields.get("package subdirectory (optional)", "")
+              actor = os.environ.get("ISSUE_USER", "")
+          elif event == "workflow_dispatch":
+              repo = os.environ.get("INPUT_REPO", "")
+              tag = os.environ.get("INPUT_TAG", "")
+              subdir = os.environ.get("INPUT_SUBDIR", "")
+              actor = os.environ.get("GH_ACTOR", "")
+              allow_maintainer = os.environ.get("INPUT_ALLOW_MAINTAINER", "false")
+          elif event == "repository_dispatch":
+              repo = os.environ.get("DISPATCH_REPO", "")
+              tag = os.environ.get("DISPATCH_TAG", "")
+              subdir = os.environ.get("DISPATCH_SUBDIR", "")
+              actor = os.environ.get("DISPATCH_ACTOR", "") or os.environ.get("GH_ACTOR", "")
+              tarball_url = os.environ.get("DISPATCH_TARBALL_URL", "")
+
+          if not repo or not tag or not actor:
+              sys.exit(f"Missing required publish fields (repo={repo!r}, tag={tag!r}, actor={actor!r}).")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"repo={repo}\n")
+              fh.write(f"tag={tag}\n")
+              fh.write(f"subdir={subdir}\n")
+              fh.write(f"actor={actor}\n")
+              fh.write(f"tarball_url={tarball_url}\n")
+              fh.write(f"allow_maintainer={allow_maintainer}\n")
+
+      - name: Build, validate, and sign thin-index metadata
+        id: build
+        env:
+          REGISTRY_SIGN_KEY: ${{ secrets.REGISTRY_SIGN_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/spkg-out
+          ALLOW_FLAG=""
+          if [ "${{ steps.req.outputs.allow_maintainer }}" = "true" ]; then
+            ALLOW_FLAG="--allow-maintainer"
+          fi
+          python3 scripts/publish_package.py \
+            --repo "${{ steps.req.outputs.repo }}" \
+            --tag "${{ steps.req.outputs.tag }}" \
+            --actor "${{ steps.req.outputs.actor }}" \
+            --subdir "${{ steps.req.outputs.subdir }}" \
+            --registry-repo "${{ github.repository }}" \
+            --tarball-url "${{ steps.req.outputs.tarball_url }}" \
+            --out-tarball /tmp/spkg-out/package.tar \
+            --out-json /tmp/spkg-out/summary.json \
+            $ALLOW_FLAG
+
+          python3 - <<'PY'
+          import json, os
+          s = json.load(open("/tmp/spkg-out/summary.json", encoding="utf-8"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              for k in ("name", "version", "release_tag", "tarball_url", "tarball_sha256"):
+                  fh.write(f"{k}={s[k]}\n")
+              fh.write(f"external_tarball={'true' if s.get('external_tarball') else 'false'}\n")
+          PY
+
+      - name: Upload immutable package.tar to GitHub Release
+        if: steps.build.outputs.external_tarball != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.build.outputs.release_tag }}" \
+            /tmp/spkg-out/package.tar \
+            --title "${{ steps.build.outputs.name }} v${{ steps.build.outputs.version }}" \
+            --notes "Immutable release archive for \`${{ steps.build.outputs.name }}@${{ steps.build.outputs.version }}\` (source: \`${{ steps.req.outputs.repo }}@${{ steps.req.outputs.tag }}\`, sha256: \`${{ steps.build.outputs.tarball_sha256 }}\`)."
+
+      - name: Commit signed thin-index metadata to main
+        run: |
+          git config user.name "spid3r-spkg-bot"
+          git config user.email "spid3r-spkg-bot@users.noreply.github.com"
+          git add "${{ steps.build.outputs.name }}" catalog.txt catalog.txt.sig
+          git commit -m "Publish ${{ steps.build.outputs.name }}@${{ steps.build.outputs.version }} (thin index)"
+          git push origin HEAD:main
+
+      - name: Comment and close issue on success
+        if: success() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKG_NAME: ${{ steps.build.outputs.name }}
+          PKG_VER: ${{ steps.build.outputs.version }}
+          TAR_URL: ${{ steps.build.outputs.tarball_url }}
+          TAR_SHA: ${{ steps.build.outputs.tarball_sha256 }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+        run: |
+          BODY=$(printf "Published **%s@%s** to the Spid3r Package Registry!\n\n- **Install:** \`spkg install %s==%s\`\n- **Tarball:** %s\n- **Tarball SHA-256:** \`%s\`\n- **Portal:** https://spid3r-spkg.github.io/#pkg/%s/%s\n" \
+            "$PKG_NAME" "$PKG_VER" "$PKG_NAME" "$PKG_VER" "$TAR_URL" "$TAR_SHA" "$PKG_NAME" "$PKG_VER")
+          gh issue comment "$ISSUE_NUM" --body "$BODY"
+          gh issue close "$ISSUE_NUM" --reason completed
+
+      - name: Comment on issue on failure
+        if: failure() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --body "Publish failed. Please inspect the [workflow run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for the exact validation error, fix your tag or repository, and submit again."

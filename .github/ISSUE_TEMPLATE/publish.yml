@@ -1,0 +1,47 @@
+name: Publish Package
+description: Publish a new Spid3r package or version from your GitHub repository (no cloning required).
+title: "[Publish]: "
+labels: ["publish"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit a tagged release from your own public GitHub repository.
+        Our GitHub Actions bot will fetch your tag, validate `spider.toml` and `src/`, build and mirror `package.tar` to an immutable GitHub Release, sign the metadata with the registry's Ed25519 key, and update the index automatically.
+
+  - type: input
+    id: repository
+    attributes:
+      label: GitHub Repository
+      description: Public GitHub repository in `owner/repo` format (no `https://github.com/` prefix needed).
+      placeholder: needyamin/my-package
+    validations:
+      required: true
+
+  - type: input
+    id: tag
+    attributes:
+      label: Git Tag
+      description: The Git tag in your repository to publish (e.g. `v0.1.0` or `0.1.0`). Must match `version` in `spider.toml`.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: subdir
+    attributes:
+      label: Package Subdirectory (Optional)
+      description: Leave blank if `spider.toml` is at the repository root. Otherwise provide a relative path (e.g. `packages/my-pkg`).
+      placeholder: ""
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-flight Checklist
+      options:
+        - label: My repository is public and contains a valid `spider.toml` and `src/` directory at the specified tag.
+          required: true
+        - label: I understand published versions are immutable and cannot be overwritten.
+          required: true

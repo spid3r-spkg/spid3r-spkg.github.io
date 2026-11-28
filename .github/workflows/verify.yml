@@ -35,7 +35,7 @@ jobs:
               if path in ("registry.pub", "registry.toml", "registry.toml.sig") and status != "A":
                   sys.exit(f"PR cannot modify or delete {path} ({status})")
               segs = path.split("/")
-              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] != "assets":
+              if len(segs) >= 3 and status != "A" and not segs[0].startswith(".") and segs[0] not in ("assets", "scripts"):
                   sys.exit(f"Release immutability violation: PR tried to {status} existing published path {path}")
           print("PR release immutability verified.")
       - name: Validate packages, hashes, Ed25519 signatures, and tar parity
@@ -91,7 +91,7 @@ jobs:
           if adv_path.is_file():
               verify_sig(adv_path, required=True)
 
-          skip = {".git", ".github", "assets"}
+          skip = {".git", ".github", "assets", "scripts"}
           pkg_dirs = sorted(
               d for d in root.iterdir()
               if d.is_dir() and d.name not in skip and not d.name.startswith(".")
@@ -189,8 +189,48 @@ jobs:
                   sys.exit(f"{pkg}/index.txt has no versions")
               if pkg.name not in catalog_names:
                   sys.exit(f"{pkg.name} missing from catalog.txt")
+              owners_path = pkg / "owners.toml"
+              if owners_path.is_file():
+                  owners_txt = owners_path.read_text(encoding="utf-8")
+                  if not re.search(r'^github_users\s*=\s*\[', owners_txt, re.M):
+                      sys.exit(f"{owners_path}: missing github_users array")
               for ver in versions:
                   vdir = pkg / ver
+                  release_toml_path = vdir / "release.toml"
+                  if release_toml_path.is_file():
+                      # Thin-index release (tarball hosted externally on GitHub Releases or R2/CDN)
+                      for req in ("spider.toml", "release.toml", "release.toml.sig", "sha256.txt", "sha256.txt.sig", "manifest.sha256", "manifest.sha256.sig"):
+                          if not (vdir / req).is_file():
+                              sys.exit(f"{vdir}: missing {req}")
+                      verify_sig(release_toml_path, required=True)
+                      rt_txt = release_toml_path.read_text(encoding="utf-8")
+                      m_name = re.search(r'^name\s*=\s*"([^"]+)"', rt_txt, re.M)
+                      m_ver = re.search(r'^version\s*=\s*"([^"]+)"', rt_txt, re.M)
+                      m_url = re.search(r'^tarball_url\s*=\s*"([^"]+)"', rt_txt, re.M)
+                      m_tsha = re.search(r'^tarball_sha256\s*=\s*"([0-9a-fA-F]{64})"', rt_txt, re.M)
+                      if not m_name or m_name.group(1) != pkg.name:
+                          sys.exit(f"{release_toml_path}: name mismatch")
+                      if not m_ver or m_ver.group(1) != ver:
+                          sys.exit(f"{release_toml_path}: version mismatch")
+                      if not m_url or not m_url.group(1).startswith("https://"):
+                          sys.exit(f"{release_toml_path}: tarball_url must be https://")
+                      if not m_tsha:
+                          sys.exit(f"{release_toml_path}: missing valid 64-hex tarball_sha256")
+
+                      expected = (vdir / "sha256.txt").read_text(encoding="utf-8").strip()
+                      if not re.fullmatch(r"[0-9a-fA-F]{64}", expected):
+                          sys.exit(f"{vdir}: sha256.txt must be 64 hex chars")
+                      verify_sig(vdir / "sha256.txt", required=True)
+
+                      manifest_bytes = (vdir / "spider.toml").read_bytes()
+                      msha_declared = (vdir / "manifest.sha256").read_text(encoding="utf-8").strip()
+                      msha_computed = manifest_and_tree_digest(manifest_bytes, expected)
+                      if msha_declared != msha_computed:
+                          sys.exit(f"{vdir}: manifest.sha256 mismatch ({msha_declared} != {msha_computed})")
+                      verify_sig(vdir / "manifest.sha256", required=True)
+                      continue
+
+                  # Legacy in-repo release (src/ and package.tar stored directly in git)
                   for req in ("spider.toml", "sha256.txt", "sha256.txt.sig", "manifest.sha256", "manifest.sha256.sig", "package.tar"):
                       if not (vdir / req).is_file():
                           sys.exit(f"{vdir}: missing {req}")

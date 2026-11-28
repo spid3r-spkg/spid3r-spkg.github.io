@@ -1,2 +1,3 @@
 # Spid3r Package Registry Catalog
 # name	latest	versions	description	categories	targets	license
+nettools	0.1.2	0.1.0,0.1.1,0.1.2	Cross-platform network diagnostics toolkit & CLI: Ping, Traceroute, TCP Ping, DNS/DoH, Subnet/CIDR math, HTTP/TLS checks, WHOIS/RDAP, and local companion server	net,cli,diagnostics	linux,macos,windows	MIT

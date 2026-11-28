@@ -242,7 +242,7 @@ def check_or_create_owners(
     actor_low = actor.lower()
 
     if owners_path.is_file():
-        data = tomllib.loads(owners_path.read_text(encoding="utf-8"))
+        data = tomllib.loads(owners_path.read_text(encoding="utf-8-sig"))
         owners = [str(u).strip().lower() for u in data.get("github_users", []) if str(u).strip()]
         if actor_low not in owners and not allow_maintainer:
             fail(
@@ -365,7 +365,7 @@ def main() -> None:
 
         manifest_bytes = manifest_path.read_bytes()
         try:
-            manifest = tomllib.loads(manifest_bytes.decode("utf-8"))
+            manifest = tomllib.loads(manifest_bytes.decode("utf-8-sig"))
         except Exception as exc:
             fail(f"Failed to parse spider.toml: {exc}")
 

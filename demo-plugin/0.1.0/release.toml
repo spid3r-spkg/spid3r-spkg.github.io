@@ -1,8 +1,0 @@
-name = "demo-plugin"
-version = "0.1.0"
-tarball_url = "https://github.com/spid3r-spkg/spid3r-spkg.github.io/releases/download/demo-plugin-0.1.0/package.tar"
-tarball_sha256 = "b6a2cf678f26f86561890f8e40c591228f1b57e5e5b808e4bce182d8dcf7141b"
-source_repo = "https://github.com/needyamin/demo-plugin"
-source_tag = "v0.1.0"
-published_by = "needyamin"
-published_at = "2026-11-28T10:18:33Z"
